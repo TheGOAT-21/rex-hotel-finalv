@@ -10,11 +10,11 @@ import { CommonModule } from '@angular/common';
     <div class="flex items-center my-6">
       <div *ngIf="label && position === 'left'" class="mr-4 text-text text-sm font-medium whitespace-nowrap">{{ label }}</div>
       
-      <div class="flex-grow border-t border-dark-300" [ngClass]="{'border-primary': primary}"></div>
+      <div class="grow border-t border-dark-300" [ngClass]="{'border-primary': primary}"></div>
       
       <div *ngIf="label && position === 'center'" class="mx-4 text-text text-sm font-medium whitespace-nowrap">{{ label }}</div>
       
-      <div *ngIf="position === 'center'" class="flex-grow border-t border-dark-300" [ngClass]="{'border-primary': primary}"></div>
+      <div *ngIf="position === 'center'" class="grow border-t border-dark-300" [ngClass]="{'border-primary': primary}"></div>
       
       <div *ngIf="label && position === 'right'" class="ml-4 text-text text-sm font-medium whitespace-nowrap">{{ label }}</div>
     </div>

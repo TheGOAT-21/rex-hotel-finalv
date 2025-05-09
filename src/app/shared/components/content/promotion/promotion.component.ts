@@ -27,8 +27,8 @@ import { RouterModule } from '@angular/router';
         >
         
         <div 
-          class="absolute inset-0 bg-gradient-to-t from-background to-transparent opacity-70"
-          [ngClass]="{'bg-gradient-to-r': align === 'left', 'bg-gradient-to-l': align === 'right'}"
+          class="absolute inset-0 bg-linear-to-t from-background to-transparent opacity-70"
+          [ngClass]="{'bg-linear-to-r': align === 'left', 'bg-linear-to-l': align === 'right'}"
         ></div>
         
         <!-- Content -->

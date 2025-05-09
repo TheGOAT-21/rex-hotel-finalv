@@ -47,7 +47,7 @@ interface SpaceFilter {
       <!-- Hero Banner -->
       <div class="relative h-64 md:h-80">
         <img src="assets/images/spaces-hero.jpg" alt="Nos espaces" class="w-full h-full object-cover">
-        <div class="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
+        <div class="absolute inset-0 bg-linear-to-t from-background to-transparent"></div>
         <div class="absolute inset-0 flex items-center justify-center">
           <h1 class="text-3xl md:text-5xl font-title font-bold text-primary">Nos Espaces</h1>
         </div>

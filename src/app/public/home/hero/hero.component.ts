@@ -10,7 +10,7 @@ import { RouterModule } from '@angular/router';
   template: `
     <section 
       class="relative hero-section"
-      [ngClass]="{'h-screen': fullHeight, 'h-96 md:h-[35rem]': !fullHeight}"
+      [ngClass]="{'h-screen': fullHeight, 'h-96 md:h-140': !fullHeight}"
     >
       <!-- Background Image or Video -->
       <div class="absolute inset-0 z-0">
@@ -33,7 +33,7 @@ import { RouterModule } from '@angular/router';
         </ng-template>
         
         <!-- Overlay -->
-        <div class="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent"></div>
+        <div class="absolute inset-0 bg-linear-to-t from-background via-background/60 to-transparent"></div>
       </div>
       
       <!-- Hero Content -->

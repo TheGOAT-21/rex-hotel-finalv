@@ -18,7 +18,7 @@ interface CarouselItem {
   template: `
     <div class="relative overflow-hidden rounded-lg">
       <!-- Main Carousel Container -->
-      <div class="relative h-96 md:h-[28rem]">
+      <div class="relative h-96 md:h-112">
         <!-- Carousel Items -->
         <div 
           *ngFor="let item of items; let i = index" 
@@ -37,7 +37,7 @@ interface CarouselItem {
           >
           
           <!-- Overlay -->
-          <div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-70"></div>
+          <div class="absolute inset-0 bg-linear-to-t from-background via-transparent to-transparent opacity-70"></div>
           
           <!-- Content -->
           <div class="absolute bottom-0 left-0 right-0 p-6 text-text">

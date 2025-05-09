@@ -190,7 +190,7 @@ interface BookingSummaryParams {
               <button 
                 *ngIf="!bookingParams.confirmationCode"
                 (click)="confirmBooking()"
-                class="bg-primary text-background hover:bg-primary-hover transition-colors px-6 py-2 rounded text-center font-bold flex-grow md:flex-grow-0"
+                class="bg-primary text-background hover:bg-primary-hover transition-colors px-6 py-2 rounded text-center font-bold grow md:grow-0"
                 [disabled]="isSubmitting"
               >
                 <div class="flex items-center justify-center">
@@ -226,7 +226,7 @@ interface BookingSummaryParams {
                 
                 <a
                   routerLink="/"
-                  class="bg-primary text-background hover:bg-primary-hover transition-colors px-6 py-2 rounded text-center font-bold flex-grow md:flex-grow-0 flex items-center justify-center"
+                  class="bg-primary text-background hover:bg-primary-hover transition-colors px-6 py-2 rounded text-center font-bold grow md:grow-0 flex items-center justify-center"
                 >
                   Retour à l'accueil
                 </a>

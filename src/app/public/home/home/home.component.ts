@@ -33,7 +33,7 @@ import { PromotionComponent } from '../../../shared/components/content/promotion
     <app-hero
       title="REX HOTEL"
       subtitle="Découvrez le luxe et le confort dans le cœur de Yamoussoukro, où chaque séjour devient une expérience inoubliable."
-      [imageUrl]="'assets/images/hotel-exterior.jpg'"
+      [imageUrl]="'assets/images/exterior/hotel-exterior.png'"
       [videoUrl]="''"
       primaryButtonText="Réserver maintenant"
       primaryButtonLink="/booking"
