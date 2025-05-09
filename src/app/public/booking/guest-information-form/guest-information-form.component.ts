@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-guest-information-form',
-  imports: [],
-  templateUrl: './guest-information-form.component.html',
-  styleUrl: './guest-information-form.component.css'
+  standalone: true,
+  imports: [CommonModule],
+  template: `<div>Guest Information Form</div>`
 })
-export class GuestInformationFormComponent {
-
-}
+export class GuestInformationFormComponent {}

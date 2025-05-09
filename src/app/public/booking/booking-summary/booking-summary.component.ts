@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-booking-summary',
-  imports: [],
-  templateUrl: './booking-summary.component.html',
-  styleUrl: './booking-summary.component.css'
+  standalone: true,
+  imports: [CommonModule],
+  template: `<div>Booking Summary</div>`
 })
-export class BookingSummaryComponent {
-
-}
+export class BookingSummaryComponent {}

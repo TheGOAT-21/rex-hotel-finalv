@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-space-selection',
-  imports: [],
-  templateUrl: './space-selection.component.html',
-  styleUrl: './space-selection.component.css'
+  standalone: true,
+  imports: [CommonModule],
+  template: `<div>Space Selection</div>`
 })
-export class SpaceSelectionComponent {
-
-}
+export class SpaceSelectionComponent {}

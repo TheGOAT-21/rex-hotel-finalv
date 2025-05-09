@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-availability-search',
-  imports: [],
-  templateUrl: './availability-search.component.html',
-  styleUrl: './availability-search.component.css'
+  standalone: true,
+  imports: [CommonModule],
+  template: `<div>Availability Search</div>`
 })
-export class AvailabilitySearchComponent {
-
-}
+export class AvailabilitySearchComponent {}

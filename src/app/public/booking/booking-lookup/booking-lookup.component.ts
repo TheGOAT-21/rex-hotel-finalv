@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-booking-lookup',
-  imports: [],
-  templateUrl: './booking-lookup.component.html',
-  styleUrl: './booking-lookup.component.css'
+  standalone: true,
+  imports: [CommonModule],
+  template: `<div>Booking Lookup</div>`
 })
-export class BookingLookupComponent {
-
-}
+export class BookingLookupComponent {}

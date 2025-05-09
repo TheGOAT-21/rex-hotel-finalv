@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-booking-confirmation',
-  imports: [],
-  templateUrl: './booking-confirmation.component.html',
-  styleUrl: './booking-confirmation.component.css'
+  standalone: true,
+  imports: [CommonModule],
+  template: `<div>Booking Confirmation</div>`
 })
-export class BookingConfirmationComponent {
-
-}
+export class BookingConfirmationComponent {}
