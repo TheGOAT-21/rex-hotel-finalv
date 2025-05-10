@@ -89,8 +89,8 @@ import { DividerComponent } from '../../../shared/components/content/divider/div
                 
                 <div class="bg-background-alt p-4 rounded-lg">
                   <p class="mb-2"><span class="font-semibold">Espace:</span> {{ bookingParams.spaceName }}</p>
-                  <p class="mb-2"><span class="font-semibold">Prix par nuit:</span> {{ bookingParams.price }}€</p>
-                  <p><span class="font-semibold">Prix total:</span> {{ bookingParams.totalPrice }}€</p>
+                  <p class="mb-2"><span class="font-semibold">Prix par nuit:</span> {{ bookingParams.price }}FCFA</p>
+                  <p><span class="font-semibold">Prix total:</span> {{ bookingParams.totalPrice }}FCFA</p>
                 </div>
               </div>
             </div>

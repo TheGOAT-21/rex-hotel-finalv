@@ -3,9 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Images communes
 const commonRoomImages: Image[] = [
-  { id: uuidv4(), url: 'assets/images/rooms/common/room-1.jpg', alt: 'Vue de la chambre', isPrimary: true },
-  { id: uuidv4(), url: 'assets/images/rooms/common/bathroom-1.jpg', alt: 'Salle de bain' },
-  { id: uuidv4(), url: 'assets/images/rooms/common/detail-1.jpg', alt: 'Détails de la chambre' }
+  { id: uuidv4(), url: 'assets/images/rooms/superior1.png', alt: 'Vue de la chambre', isPrimary: true },
+  { id: uuidv4(), url: 'assets/images/rooms/superior2.png', alt: 'Salle de bain' },
+  { id: uuidv4(), url: 'assets/images/rooms/superior3.png', alt: 'Détails de la chambre' }
 ];
 
 const commonEventSpaceImages: Image[] = [
@@ -15,10 +15,10 @@ const commonEventSpaceImages: Image[] = [
 ];
 
 const restaurantImages: Image[] = [
-  { id: uuidv4(), url: 'assets/images/dining/restaurant-main.jpg', alt: 'Restaurant principal', isPrimary: true },
-  { id: uuidv4(), url: 'assets/images/dining/restaurant-tables.jpg', alt: 'Tables du restaurant' },
-  { id: uuidv4(), url: 'assets/images/dining/restaurant-bar.jpg', alt: 'Bar du restaurant' },
-  { id: uuidv4(), url: 'assets/images/dining/restaurant-food.jpg', alt: 'Plats du restaurant' }
+  { id: uuidv4(), url: 'assets/images/restaurants/restaurant.png', alt: 'Restaurant principal', isPrimary: true },
+  { id: uuidv4(), url: 'assets/images/restaurants/restaurant2.png', alt: 'Tables du restaurant' },
+  { id: uuidv4(), url: 'assets/images/restaurants/restaurant3.png', alt: 'Bar du restaurant' },
+  { id: uuidv4(), url: 'assets/images/restaurants/restaurant4.png', alt: 'Plats du restaurant' }
 ];
 
 // Features communes
@@ -65,7 +65,7 @@ export const roomTypeA: RoomSpace = {
   description: 'Chambre classique avec lit double, offrant confort et élégance pour votre séjour à Yamoussoukro.',
   images: [
     ...commonRoomImages,
-    { id: uuidv4(), url: 'assets/images/rooms/type-a/room-view-a.jpg', alt: 'Vue spécifique chambre type A' }
+    { id: uuidv4(), url: 'assets/images/rooms/classic-room.png', alt: 'Vue spécifique chambre type A' }
   ],
   features: [
     ...roomFeatures,
@@ -73,7 +73,7 @@ export const roomTypeA: RoomSpace = {
   ],
   capacity: 2,
   price: 150,
-  currency: 'EUR',
+  currency: 'XOF',
   available: true,
   bedType: 'Lit double',
   size: 25,
@@ -88,7 +88,7 @@ export const roomTypeB: RoomSpace = {
   description: 'Chambre supérieure spacieuse avec lit king-size, offrant une expérience premium avec vue sur la piscine.',
   images: [
     ...commonRoomImages,
-    { id: uuidv4(), url: 'assets/images/rooms/type-b/room-view-b.jpg', alt: 'Vue spécifique chambre type B' }
+    { id: uuidv4(), url: 'assets/images/rooms/chamb1.png', alt: 'Vue spécifique chambre type B' }
   ],
   features: [
     ...roomFeatures,
@@ -112,7 +112,7 @@ export const roomTypeC: RoomSpace = {
   description: 'Chambre deluxe avec lit king-size et balcon privé, offrant une vue imprenable sur la ville de Yamoussoukro.',
   images: [
     ...commonRoomImages,
-    { id: uuidv4(), url: 'assets/images/rooms/type-c/balcony-c.jpg', alt: 'Balcon chambre type C' }
+    { id: uuidv4(), url: 'assets/images/rooms/deluxe1.png', alt: 'Balcon chambre type C' }
   ],
   features: [
     ...roomFeatures,
@@ -137,7 +137,7 @@ export const roomTypeD: RoomSpace = {
   description: 'Chambre familiale spacieuse avec un lit king-size et deux lits simples, parfaite pour les familles.',
   images: [
     ...commonRoomImages,
-    { id: uuidv4(), url: 'assets/images/rooms/type-d/family-view-d.jpg', alt: 'Espace famille chambre type D' }
+    { id: uuidv4(), url: 'assets/images/rooms/superior1.png', alt: 'Espace famille chambre type D' }
   ],
   features: [
     ...roomFeatures,
@@ -160,11 +160,11 @@ export const roomTypeP: RoomSpace = {
   type: SpaceType.ROOM,
   description: 'Suite Penthouse luxueuse avec terrasse privée, offrant une vue panoramique sur Yamoussoukro et un service exclusif.',
   images: [
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse/penthouse-main.jpg', alt: 'Vue principale penthouse', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse/penthouse-bedroom.jpg', alt: 'Chambre penthouse' },
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse/penthouse-living.jpg', alt: 'Salon penthouse' },
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse/penthouse-terrace.jpg', alt: 'Terrasse penthouse' },
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse/penthouse-bathroom.jpg', alt: 'Salle de bain penthouse' }
+    { id: uuidv4(), url: 'assets/images/rooms/penthouse1.png', alt: 'Vue principale penthouse', isPrimary: true },
+    { id: uuidv4(), url: 'assets/images/rooms/penthouse2.png', alt: 'Chambre penthouse' },
+    { id: uuidv4(), url: 'assets/images/rooms/penthouse3.png', alt: 'Salon penthouse' },
+    { id: uuidv4(), url: 'assets/images/rooms/penthouse4.png', alt: 'Terrasse penthouse' },
+    { id: uuidv4(), url: 'assets/images/rooms/penthouse5.png', alt: 'Salle de bain penthouse' }
   ],
   features: [
     ...roomFeatures,
@@ -226,9 +226,9 @@ export const terraceRDC: DiningSpace = {
   type: SpaceType.RESTAURANT,
   description: 'Terrasse ombragée située au rez-de-chaussée, offrant une ambiance décontractée pour les déjeuners et dîners au bord de la piscine.',
   images: [
-    { id: uuidv4(), url: 'assets/images/dining/terrace-rdc-main.jpg', alt: 'Terrasse principale RDC', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/dining/terrace-rdc-pool.jpg', alt: 'Vue piscine depuis terrasse RDC' },
-    { id: uuidv4(), url: 'assets/images/dining/terrace-rdc-night.jpg', alt: 'Terrasse RDC en soirée' }
+    { id: uuidv4(), url: 'assets/images/restaurants/restaurant.png', alt: 'Terrasse principale RDC', isPrimary: true },
+    { id: uuidv4(), url: 'assets/images/restaurants/restaurant3.png', alt: 'Vue piscine depuis terrasse RDC' },
+    { id: uuidv4(), url: 'assets/images/restaurants/restaurant2.png', alt: 'Terrasse RDC en soirée' }
   ],
   features: [
     { name: 'Vue sur piscine', icon: 'pool' },
@@ -302,8 +302,8 @@ export const meetingRoom1: EventSpace = {
   type: SpaceType.EVENT_SPACE,
   description: 'Salle de réunion élégante et fonctionnelle, parfaite pour les réunions d\'affaires et petits séminaires.',
   images: [
-    { id: uuidv4(), url: 'assets/images/event-spaces/meeting-1/meeting-1-main.jpg', alt: 'Salle de réunion 1', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/event-spaces/meeting-1/meeting-1-setup.jpg', alt: 'Configuration salle de réunion 1' }
+    { id: uuidv4(), url: 'assets/images/events/conference.png', alt: 'Salle de réunion 1', isPrimary: true },
+    { id: uuidv4(), url: 'assets/images/events/conference1.png', alt: 'Configuration salle de réunion 1' }
   ],
   features: [
     ...eventSpaceFeatures,
@@ -497,9 +497,8 @@ export const kidsArea: Space = {
   type: SpaceType.EVENT_SPACE,
   description: 'Espace dédié aux enfants avec activités ludiques et éducatives, sous la supervision de personnel qualifié.',
   images: [
-    { id: uuidv4(), url: 'assets/images/facilities/kids-area-main.jpg', alt: 'Espace enfant principal', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/facilities/kids-play.jpg', alt: 'Zone de jeux enfants' },
-    { id: uuidv4(), url: 'assets/images/facilities/kids-activities.jpg', alt: 'Activités enfants' }
+    { id: uuidv4(), url: 'assets/images//kids-play.png', alt: 'Espace enfant principal', isPrimary: true },
+    { id: uuidv4(), url: 'assets/images//kids-play2.png', alt: 'Activités enfants' }
   ],
   features: [
     { name: 'Jeux éducatifs', icon: 'educational-games' },

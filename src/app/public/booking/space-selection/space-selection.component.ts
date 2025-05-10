@@ -116,8 +116,8 @@ interface AvailableSpace {
                           <p class="text-text opacity-80 text-sm mb-3">{{ space.description }}</p>
                         </div>
                         <div class="flex flex-col items-end">
-                          <div *ngIf="space.originalPrice" class="text-text line-through text-sm">{{ space.originalPrice }}€</div>
-                          <div class="text-primary font-bold text-xl">{{ space.price }}€</div>
+                          <div *ngIf="space.originalPrice" class="text-text line-through text-sm">{{ space.originalPrice }}FCFA</div>
+                          <div class="text-primary font-bold text-xl">{{ space.price }}FCFA</div>
                           <div class="text-text text-sm">{{ space.priceUnit }}</div>
                         </div>
                       </div>
@@ -278,7 +278,7 @@ export class SpaceSelectionComponent implements OnInit {
             name: 'Chambre Classique',
             type: 'Chambre',
             description: 'Une chambre élégante avec lit double et toutes les commodités essentielles pour un séjour confortable.',
-            imageUrl: 'assets/images/rooms/classic-room.jpg',
+            imageUrl: 'assets/images/rooms/classic-room.png',
             price: 150,
             priceUnit: 'par nuit',
             features: [
@@ -326,7 +326,7 @@ export class SpaceSelectionComponent implements OnInit {
             name: 'Suite Deluxe',
             type: 'Suite',
             description: 'Une suite avec balcon privé offrant une vue imprenable sur la ville et un espace salon séparé.',
-            imageUrl: 'assets/images/rooms/deluxe-suite.jpg',
+            imageUrl: 'assets/images/rooms/deluxe1.png',
             price: 280,
             priceUnit: 'par nuit',
             features: [
@@ -351,7 +351,7 @@ export class SpaceSelectionComponent implements OnInit {
             name: 'Penthouse',
             type: 'Suite Executive',
             description: 'Notre suite exclusive au dernier étage avec terrasse privée et service de majordome.',
-            imageUrl: 'assets/images/rooms/penthouse.jpg',
+            imageUrl: 'assets/images/rooms/penthouse1.png',
             price: 750,
             priceUnit: 'par nuit',
             features: [

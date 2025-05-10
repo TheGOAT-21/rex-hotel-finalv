@@ -131,11 +131,11 @@ import { CardComponent } from '../../../shared/components/ui/card/card.component
               <!-- Featured Space 1 -->
               <div class="bg-background-alt rounded-lg overflow-hidden shadow-lg">
                 <div class="relative h-48">
-                  <img src="assets/images/rooms/classic-room.jpg" alt="Chambre Classique" class="w-full h-full object-cover">
+                  <img src="assets/images/rooms/classic-room.png" alt="Chambre Classique" class="w-full h-full object-cover">
                 </div>
                 <div class="p-4">
                   <h4 class="text-lg font-title font-bold text-primary mb-2">Chambre Classique</h4>
-                  <p class="text-text opacity-80 text-sm mb-4">À partir de 150€ / nuit</p>
+                  <p class="text-text opacity-80 text-sm mb-4">À partir de 150FCFA / nuit</p>
                   <a 
                     routerLink="/spaces/chambre-classique"
                     class="inline-block text-primary font-semibold hover:underline"
@@ -148,11 +148,11 @@ import { CardComponent } from '../../../shared/components/ui/card/card.component
               <!-- Featured Space 2 -->
               <div class="bg-background-alt rounded-lg overflow-hidden shadow-lg">
                 <div class="relative h-48">
-                  <img src="assets/images/rooms/deluxe-suite.jpg" alt="Suite Deluxe" class="w-full h-full object-cover">
+                  <img src="assets/images/rooms/deluxe1.png" alt="Suite Deluxe" class="w-full h-full object-cover">
                 </div>
                 <div class="p-4">
                   <h4 class="text-lg font-title font-bold text-primary mb-2">Suite Deluxe</h4>
-                  <p class="text-text opacity-80 text-sm mb-4">À partir de 280€ / nuit</p>
+                  <p class="text-text opacity-80 text-sm mb-4">À partir de 280FCFA / nuit</p>
                   <a 
                     routerLink="/spaces/suite-deluxe"
                     class="inline-block text-primary font-semibold hover:underline"

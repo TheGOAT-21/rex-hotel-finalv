@@ -46,8 +46,8 @@ interface SpaceFilter {
     <div class="bg-background min-h-screen">
       <!-- Hero Banner -->
       <div class="relative h-64 md:h-80">
-        <img src="assets/images/spaces-hero.jpg" alt="Nos espaces" class="w-full h-full object-cover">
-        <div class="absolute inset-0 bg-linear-to-t from-background to-transparent"></div>
+        <img src="assets/images/rooms/superior1.png" alt="Nos espaces" class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
         <div class="absolute inset-0 flex items-center justify-center">
           <h1 class="text-3xl md:text-5xl font-title font-bold text-primary">Nos Espaces</h1>
         </div>
@@ -63,7 +63,7 @@ interface SpaceFilter {
               [capacityOptions]="capacityOptions"
               [minPriceOption]="50"
               [maxPriceOption]="1000"
-              currencySymbol="€"
+              currencySymbol="FCFA"
               [showPriceFilter]="true"
               [showCapacityFilter]="true"
               [showAvailabilityFilter]="true"
@@ -95,7 +95,7 @@ interface SpaceFilter {
                   [capacityOptions]="capacityOptions"
                   [minPriceOption]="50"
                   [maxPriceOption]="1000"
-                  currencySymbol="€"
+                  currencySymbol="FCFA"
                   [showPriceFilter]="true"
                   [showCapacityFilter]="true"
                   [showAvailabilityFilter]="true"
@@ -186,9 +186,9 @@ export class SpacesComponent implements OnInit {
       name: 'Chambre Classique',
       type: 'Chambre',
       description: 'Une chambre élégante avec lit double et toutes les commodités essentielles pour un séjour confortable.',
-      imageUrl: 'assets/images/rooms/classic-room.jpg',
+      imageUrl: 'assets/images/rooms/classic-room.png',
       price: 150,
-      priceUnit: '€ / nuit',
+      priceUnit: 'FCFA / nuit',
       available: true,
       features: [
         { name: 'Wifi gratuit', icon: 'wifi' },
@@ -203,7 +203,7 @@ export class SpacesComponent implements OnInit {
       description: 'Une chambre spacieuse avec lit king-size et vue sur les jardins luxuriants de l\'hôtel.',
       imageUrl: 'assets/images/rooms/superior-room.jpg',
       price: 220,
-      priceUnit: '€ / nuit',
+      priceUnit: 'FCFA / nuit',
       available: true,
       features: [
         { name: 'Vue jardin', icon: 'garden' },
@@ -216,9 +216,9 @@ export class SpacesComponent implements OnInit {
       name: 'Suite Deluxe',
       type: 'Suite',
       description: 'Une suite avec balcon privé offrant une vue imprenable sur la ville et un espace salon séparé.',
-      imageUrl: 'assets/images/rooms/deluxe-suite.jpg',
+      imageUrl: 'assets/images/rooms/deluxe1.png',
       price: 280,
-      priceUnit: '€ / nuit',
+      priceUnit: 'FCFA / nuit',
       available: true,
       features: [
         { name: 'Balcon privé', icon: 'balcony' },
@@ -233,7 +233,7 @@ export class SpacesComponent implements OnInit {
       description: 'Chambre spacieuse avec un lit king-size et deux lits simples, parfaite pour les familles.',
       imageUrl: 'assets/images/rooms/family-room.jpg',
       price: 320,
-      priceUnit: '€ / nuit',
+      priceUnit: 'FCFA / nuit',
       available: true,
       features: [
         { name: 'Espace famille', icon: 'family' },
@@ -246,9 +246,9 @@ export class SpacesComponent implements OnInit {
       name: 'Penthouse',
       type: 'Suite Executive',
       description: 'Notre suite exclusive au dernier étage avec terrasse privée et service de majordome.',
-      imageUrl: 'assets/images/rooms/penthouse.jpg',
+      imageUrl: 'assets/images/rooms/penthouse1.png',
       price: 750,
-      priceUnit: '€ / nuit',
+      priceUnit: 'FCFA / nuit',
       available: true,
       badge: 'EXCLUSIF',
       features: [
@@ -294,7 +294,7 @@ export class SpacesComponent implements OnInit {
       description: 'Grande salle polyvalente pour les séminaires, conférences et événements professionnels.',
       imageUrl: 'assets/images/event-spaces/conference.jpg',
       price: 1500,
-      priceUnit: '€ / jour',
+      priceUnit: 'FCFA / jour',
       available: true,
       features: [
         { name: 'Capacité 200 personnes', icon: 'people' },
@@ -309,7 +309,7 @@ export class SpacesComponent implements OnInit {
       description: 'Élégante salle de réception spécialement conçue pour les mariages et célébrations.',
       imageUrl: 'assets/images/event-spaces/wedding.jpg',
       price: 2000,
-      priceUnit: '€ / jour',
+      priceUnit: 'FCFA / jour',
       available: false,
       features: [
         { name: 'Piste de danse', icon: 'dance-floor' },

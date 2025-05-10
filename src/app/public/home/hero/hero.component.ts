@@ -32,25 +32,25 @@ import { RouterModule } from '@angular/router';
           <img [src]="imageUrl" [alt]="title" class="w-full h-full object-cover">
         </ng-template>
         
-        <!-- Overlay -->
-        <div class="absolute inset-0 bg-linear-to-t from-background via-background/60 to-transparent"></div>
+        <!-- Dark Overlay pour meilleure lisibilité -->
+        <div class="absolute inset-0 bg-gradient-to-b from-background/20 via-background/60 to-background/90"></div>
       </div>
       
       <!-- Hero Content -->
       <div class="relative z-10 container mx-auto px-4 h-full flex flex-col items-center justify-center text-center">
         <div class="animate-fadeIn">
-          <div *ngIf="tagline" class="text-primary font-semibold mb-2">{{ tagline }}</div>
+          <div *ngIf="tagline" class="text-primary font-semibold text-xl mb-4 drop-shadow-lg">{{ tagline }}</div>
           
-          <h1 class="text-3xl md:text-5xl lg:text-6xl font-title font-bold text-primary mb-4">{{ title }}</h1>
+          <h1 class="text-4xl md:text-6xl lg:text-7xl font-title font-bold text-primary mb-6 drop-shadow-lg">{{ title }}</h1>
           
-          <p *ngIf="subtitle" class="text-text text-lg md:text-xl max-w-2xl mx-auto mb-8">{{ subtitle }}</p>
+          <p *ngIf="subtitle" class="text-white text-lg md:text-2xl max-w-3xl mx-auto mb-10 drop-shadow-lg font-light">{{ subtitle }}</p>
           
           <!-- CTA Buttons -->
-          <div *ngIf="primaryButtonText || secondaryButtonText" class="flex flex-col sm:flex-row justify-center gap-4">
+          <div *ngIf="primaryButtonText || secondaryButtonText" class="flex flex-col sm:flex-row justify-center gap-6">
             <a 
               *ngIf="primaryButtonText" 
               [routerLink]="primaryButtonLink || '/'" 
-              class="bg-primary text-background font-bold uppercase px-6 py-3 rounded hover:bg-primary-hover transition-colors"
+              class="bg-primary text-background font-bold uppercase px-8 py-4 rounded hover:bg-primary-hover transition-colors text-lg shadow-lg"
             >
               {{ primaryButtonText }}
             </a>
@@ -58,14 +58,14 @@ import { RouterModule } from '@angular/router';
             <a 
               *ngIf="secondaryButtonText" 
               [routerLink]="secondaryButtonLink || '/'" 
-              class="bg-transparent text-primary border-2 border-primary font-bold uppercase px-6 py-3 rounded hover:bg-primary hover:bg-opacity-10 transition-colors"
+              class="bg-background/20 backdrop-blur-sm text-white border-2 border-white font-bold uppercase px-8 py-4 rounded hover:bg-white/30 transition-colors text-lg shadow-lg"
             >
               {{ secondaryButtonText }}
             </a>
           </div>
           
           <!-- Optional Content Slot -->
-          <div class="mt-8">
+          <div class="mt-10">
             <ng-content></ng-content>
           </div>
         </div>
@@ -75,7 +75,7 @@ import { RouterModule } from '@angular/router';
       <div *ngIf="fullHeight && showScrollIndicator" class="absolute bottom-8 left-0 right-0 flex justify-center animate-bounce">
         <button 
           (click)="scrollDown()" 
-          class="text-primary focus:outline-none focus:ring-2 focus:ring-primary rounded-full p-1"
+          class="text-white hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary rounded-full p-2 transition-colors bg-background/20 backdrop-blur-sm"
           aria-label="Scroll down"
         >
           <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

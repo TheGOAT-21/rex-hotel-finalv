@@ -206,7 +206,7 @@ export class SpaceGalleryComponent implements OnInit {
     return [
       {
         id: '1',
-        url: 'assets/images/rooms/deluxe-suite.jpg',
+        url: 'assets/images/rooms/deluxe1.png',
         alt: 'Vue principale de la Suite Deluxe',
         isPrimary: true,
         caption: 'Notre Suite Deluxe avec balcon privé et vue panoramique'

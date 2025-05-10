@@ -188,7 +188,7 @@ export class SpaceFilterComponent {
   @Input() capacityOptions: FilterOption[] = [];
   @Input() minPriceOption = 0;
   @Input() maxPriceOption = 1000;
-  @Input() currencySymbol = '€';
+  @Input() currencySymbol = 'FCFA';
   @Input() showPriceFilter = true;
   @Input() showCapacityFilter = true;
   @Input() showAvailabilityFilter = true;

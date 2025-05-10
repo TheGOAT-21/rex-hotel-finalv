@@ -89,10 +89,10 @@ interface BookingQueryParams {
                 <h4 class="font-semibold text-text mb-2">Espace sélectionné</h4>
                 <p class="text-primary font-bold mb-1">{{ bookingParams.spaceName }}</p>
                 <p class="text-text">
-                  <span class="font-semibold">{{ bookingParams.price }}€</span> x {{ bookingParams.nights }} nuits
+                  <span class="font-semibold">{{ bookingParams.price }}FCFA</span> x {{ bookingParams.nights }} nuits
                 </p>
                 <p class="text-text font-bold mt-1">
-                  Total: {{ bookingParams.price * bookingParams.nights }}€
+                  Total: {{ bookingParams.price * bookingParams.nights }}FCFA
                 </p>
               </div>
             </div>
