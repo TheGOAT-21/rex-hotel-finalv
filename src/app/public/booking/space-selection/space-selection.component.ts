@@ -1,11 +1,15 @@
 // src/app/public/booking/space-selection/space-selection.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SectionTitleComponent } from '../../../shared/components/content/section-title/section-title.component';
 import { CardComponent } from '../../../shared/components/ui/card/card.component';
 import { ButtonComponent } from '../../../shared/components/ui/button/button.component';
 import { LoaderComponent } from '../../../shared/components/ui/loader/loader.component';
+import { SpaceService } from '../../../core/services/space.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { RoomSpace, Space, SpaceType } from '../../../core/interfaces/space.interface';
+import { Subject, takeUntil } from 'rxjs';
 
 interface BookingParams {
   checkIn: string;
@@ -16,25 +20,12 @@ interface BookingParams {
   promo?: string;
 }
 
-interface AvailableSpace {
-  id: string;
-  name: string;
-  type: string;
-  description: string;
-  imageUrl: string;
-  price: number;
-  priceUnit: string;
-  originalPrice?: number; // For discounted prices
-  features: { name: string; icon?: string }[];
-  capacity: number;
+interface AvailableSpace extends Space {
   availableRooms: number;
-  amenities: string[];
-  bedType: string;
-  size: number;
-  view?: string;
   isRefundable: boolean;
   includedServices: string[];
-  selected?: boolean; // For selection state
+  selected?: boolean;
+  originalPrice?: number; // For discounted prices
 }
 
 @Component({
@@ -102,7 +93,7 @@ interface AvailableSpace {
                 <!-- Space Image -->
                 <div class="md:w-1/3">
                   <div class="h-60 md:h-full">
-                    <img [src]="space.imageUrl" [alt]="space.name" class="w-full h-full object-cover">
+                    <img [src]="getSpaceImageUrl(space)" [alt]="space.name" class="w-full h-full object-cover">
                   </div>
                 </div>
                 
@@ -116,21 +107,21 @@ interface AvailableSpace {
                           <p class="text-text opacity-80 text-sm mb-3">{{ space.description }}</p>
                         </div>
                         <div class="flex flex-col items-end">
-                          <div *ngIf="space.originalPrice" class="text-text line-through text-sm">{{ space.originalPrice }}FCFA</div>
-                          <div class="text-primary font-bold text-xl">{{ space.price }}FCFA</div>
-                          <div class="text-text text-sm">{{ space.priceUnit }}</div>
+                          <div *ngIf="space.originalPrice" class="text-text line-through text-sm">{{ space.originalPrice }}{{ space.currency }}</div>
+                          <div class="text-primary font-bold text-xl">{{ space.price }}{{ space.currency }}</div>
+                          <div class="text-text text-sm">par nuit</div>
                         </div>
                       </div>
                       
                       <!-- Features & Amenities -->
                       <div class="grid grid-cols-2 gap-2 mb-4">
-                        <div class="flex items-center text-text text-sm">
+                        <div *ngIf="isRoomSpace(space)" class="flex items-center text-text text-sm">
                           <svg class="w-4 h-4 mr-1 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                           </svg>
                           {{ space.size }} m²
                         </div>
-                        <div class="flex items-center text-text text-sm">
+                        <div *ngIf="isRoomSpace(space)" class="flex items-center text-text text-sm">
                           <svg class="w-4 h-4 mr-1 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                           </svg>
@@ -223,7 +214,7 @@ interface AvailableSpace {
     </div>
   `
 })
-export class SpaceSelectionComponent implements OnInit {
+export class SpaceSelectionComponent implements OnInit, OnDestroy {
   bookingParams: BookingParams = {
     checkIn: '',
     checkOut: '',
@@ -234,8 +225,14 @@ export class SpaceSelectionComponent implements OnInit {
   
   isLoading = true;
   availableSpaces: AvailableSpace[] = [];
+  private destroy$ = new Subject<void>();
   
-  constructor(private route: ActivatedRoute, private router: Router) {}
+  constructor(
+    private route: ActivatedRoute, 
+    private router: Router,
+    private spaceService: SpaceService,
+    private notificationService: NotificationService
+  ) {}
   
   ngOnInit(): void {
     // Get query parameters from the URL
@@ -249,8 +246,9 @@ export class SpaceSelectionComponent implements OnInit {
         promo: params['promo']
       };
       
-      // Validate parameters (in a real app, you'd do more validation)
+      // Validate parameters
       if (!this.bookingParams.checkIn || !this.bookingParams.checkOut || !this.bookingParams.spaceType) {
+        this.notificationService.showError('Informations de recherche incomplètes');
         this.router.navigate(['/booking']);
         return;
       }
@@ -260,175 +258,144 @@ export class SpaceSelectionComponent implements OnInit {
     });
   }
   
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+  
   get hasSelection(): boolean {
     return this.availableSpaces.some(space => space.selected);
   }
   
   loadAvailableSpaces(): void {
-    // In a real application, this would be a service call
-    // For this demo, we'll simulate loading and return mock data
     this.isLoading = true;
     
-    setTimeout(() => {
-      // Mock data based on the space type
-      if (this.bookingParams.spaceType === 'room') {
-        this.availableSpaces = [
-          {
-            id: 'chambre-classique',
-            name: 'Chambre Classique',
-            type: 'Chambre',
-            description: 'Une chambre élégante avec lit double et toutes les commodités essentielles pour un séjour confortable.',
-            imageUrl: 'assets/images/rooms/classic-room.png',
-            price: 150,
-            priceUnit: 'par nuit',
-            features: [
-              { name: 'Wifi gratuit', icon: 'wifi' },
-              { name: 'Climatisation', icon: 'air-conditioner' },
-              { name: 'TV écran plat', icon: 'tv' }
-            ],
-            capacity: 2,
-            availableRooms: 8,
-            amenities: ['Sèche-cheveux', 'Produits de toilette', 'Serviettes', 'Peignoirs'],
-            bedType: 'Lit double',
-            size: 25,
-            view: 'Jardin',
-            isRefundable: true,
-            includedServices: ['Wifi gratuit', 'Petit-déjeuner inclus', 'Accès piscine']
-          },
-          {
-            id: 'chambre-superieure',
-            name: 'Chambre Supérieure',
-            type: 'Chambre',
-            description: 'Une chambre spacieuse avec lit king-size et vue sur les jardins luxuriants de l\'hôtel.',
-            imageUrl: 'assets/images/rooms/superior-room.jpg',
-            price: 198,
-            originalPrice: 220,
-            priceUnit: 'par nuit',
-            features: [
-              { name: 'Vue jardin', icon: 'garden' },
-              { name: 'Minibar', icon: 'fridge' },
-              { name: 'Coffre-fort', icon: 'safe' }
-            ],
-            capacity: 2,
-            availableRooms: 3,
-            amenities: ['Sèche-cheveux', 'Produits de toilette premium', 'Serviettes', 'Peignoirs', 'Pantoufles', 'Machine à café'],
-            bedType: 'Lit king-size',
-            size: 35,
-            view: 'Piscine',
-            isRefundable: true,
-            includedServices: ['Wifi gratuit', 'Petit-déjeuner inclus', 'Accès piscine', 'Accès fitness']
-          }
-        ];
-      } else if (this.bookingParams.spaceType === 'suite') {
-        this.availableSpaces = [
-          {
-            id: 'suite-deluxe',
-            name: 'Suite Deluxe',
-            type: 'Suite',
-            description: 'Une suite avec balcon privé offrant une vue imprenable sur la ville et un espace salon séparé.',
-            imageUrl: 'assets/images/rooms/deluxe1.png',
-            price: 280,
-            priceUnit: 'par nuit',
-            features: [
-              { name: 'Balcon privé', icon: 'balcony' },
-              { name: 'Salon séparé', icon: 'sofa' },
-              { name: 'Douche à effet pluie', icon: 'shower' }
-            ],
-            capacity: 2,
-            availableRooms: 2,
-            amenities: ['Sèche-cheveux', 'Produits de toilette premium', 'Serviettes', 'Peignoirs', 'Pantoufles', 'Machine à café Nespresso', 'Station d\'accueil iPod'],
-            bedType: 'Lit king-size',
-            size: 40,
-            view: 'Ville',
-            isRefundable: true,
-            includedServices: ['Wifi gratuit', 'Petit-déjeuner inclus', 'Accès spa & piscine', 'Accès fitness', 'Service en chambre']
-          }
-        ];
-      } else if (this.bookingParams.spaceType === 'penthouse') {
-        this.availableSpaces = [
-          {
-            id: 'penthouse',
-            name: 'Penthouse',
-            type: 'Suite Executive',
-            description: 'Notre suite exclusive au dernier étage avec terrasse privée et service de majordome.',
-            imageUrl: 'assets/images/rooms/penthouse1.png',
-            price: 750,
-            priceUnit: 'par nuit',
-            features: [
-              { name: 'Terrasse privée', icon: 'terrace' },
-              { name: 'Service majordome', icon: 'butler' },
-              { name: 'Jacuzzi privé', icon: 'jacuzzi' }
-            ],
-            capacity: 2,
-            availableRooms: 1,
-            amenities: ['Sèche-cheveux', 'Produits de toilette de luxe', 'Serviettes', 'Peignoirs', 'Pantoufles', 'Machine à café', 'Bar privé', 'Système audio Bose', 'Smart TV'],
-            bedType: 'Lit king-size',
-            size: 120,
-            view: 'Panoramique',
-            isRefundable: true,
-            includedServices: ['Wifi gratuit', 'Petit-déjeuner inclus', 'Accès illimité au spa', 'Transfert aéroport', 'Service de majordome 24/7', 'Minibar gratuit']
-          }
-        ];
-      } else if (this.bookingParams.spaceType === 'event_space') {
-        this.availableSpaces = [
-          {
-            id: 'salle-conference',
-            name: 'Salle de Conférence',
-            type: 'Événementiel',
-            description: 'Grande salle polyvalente pour les séminaires, conférences et événements professionnels.',
-            imageUrl: 'assets/images/event-spaces/conference.jpg',
-            price: 1500,
-            priceUnit: 'par jour',
-            features: [
-              { name: 'Équipement audiovisuel', icon: 'projector' },
-              { name: 'Service traiteur', icon: 'catering' },
-              { name: 'Wifi haut débit', icon: 'wifi' }
-            ],
-            capacity: 200,
-            availableRooms: 1,
-            amenities: ['Projecteur', 'Écran', 'Système de sonorisation', 'Microphones', 'Tableau blanc', 'Connexion Internet haut débit'],
-            bedType: 'N/A',
-            size: 300,
-            isRefundable: false,
-            includedServices: ['Wifi haut débit', 'Équipement audiovisuel de base', 'Eau et café', 'Support technique']
-          },
-          {
-            id: 'salle-mariage',
-            name: 'Salle de Mariage',
-            type: 'Événementiel',
-            description: 'Élégante salle de réception spécialement conçue pour les mariages et célébrations.',
-            imageUrl: 'assets/images/event-spaces/wedding.jpg',
-            price: 2000,
-            priceUnit: 'par jour',
-            features: [
-              { name: 'Piste de danse', icon: 'dance-floor' },
-              { name: 'Éclairage d\'ambiance', icon: 'ambient-light' },
-              { name: 'Espace DJ', icon: 'dj-booth' }
-            ],
-            capacity: 150,
-            availableRooms: 1,
-            amenities: ['Piste de danse', 'Éclairage d\'ambiance', 'Espace pour orchestre/DJ', 'Vestiaire', 'Salon privé pour les mariés'],
-            bedType: 'N/A',
-            size: 250,
-            isRefundable: false,
-            includedServices: ['Coordination de l\'événement', 'Décoration de base', 'Tables et chaises', 'Personnel d\'accueil']
-          }
-        ];
-      } else {
-        this.availableSpaces = [];
-      }
-      
-      // Check if a promo code was applied and adjust prices
-      if (this.bookingParams.promo && this.bookingParams.promo.toUpperCase() === 'WELCOME10') {
-        this.availableSpaces.forEach(space => {
-          // Apply 10% discount
-          space.originalPrice = space.price;
-          space.price = Math.round(space.price * 0.9);
+    // Map the space type string from URL param to actual SpaceType enum
+    let spaceTypeEnum: SpaceType | undefined;
+    switch (this.bookingParams.spaceType) {
+      case 'room':
+        spaceTypeEnum = SpaceType.ROOM;
+        break;
+      case 'suite':
+        spaceTypeEnum = SpaceType.ROOM; // Suite is also a room type
+        break;
+      case 'penthouse':
+        spaceTypeEnum = SpaceType.ROOM; // Penthouse is also a room type
+        break;
+      case 'event_space':
+        spaceTypeEnum = SpaceType.EVENT_SPACE;
+        break;
+      case 'restaurant':
+        spaceTypeEnum = SpaceType.RESTAURANT;
+        break;
+      case 'bar':
+        spaceTypeEnum = SpaceType.BAR;
+        break;
+    }
+    
+    // Get spaces by type
+    if (spaceTypeEnum) {
+      this.spaceService.getSpacesByType(spaceTypeEnum)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(spaces => {
+          // Filter for available spaces
+          const filteredSpaces = spaces.filter(space => space.available);
+          
+          // Convert spaces to available spaces with additional properties
+          this.availableSpaces = filteredSpaces.map(space => this.convertToAvailableSpace(space));
+          
+          // Apply promo code if applicable
+          this.applyPromoCodeIfNeeded();
+          
+          this.isLoading = false;
         });
-      }
+    } else {
+      // Fallback to search all spaces if type is not recognized
+      this.spaceService.getAllSpaces()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(spaces => {
+          // Filter for available spaces
+          const filteredSpaces = spaces.filter(space => space.available);
+          
+          // Convert spaces to available spaces with additional properties
+          this.availableSpaces = filteredSpaces.map(space => this.convertToAvailableSpace(space));
+          
+          // Apply promo code if applicable
+          this.applyPromoCodeIfNeeded();
+          
+          this.isLoading = false;
+        });
+    }
+  }
+  
+  private convertToAvailableSpace(space: Space): AvailableSpace {
+    // Convert Space to AvailableSpace with additional properties
+    return {
+      ...space,
+      availableRooms: Math.floor(Math.random() * 10) + 1, // Simulated availability
+      isRefundable: true, // Default value
+      includedServices: this.getIncludedServices(space),
+    };
+  }
+  
+  private getIncludedServices(space: Space): string[] {
+    // Generate included services based on space type
+    const baseServices = ['Wifi gratuit'];
+    
+    if (space.type === SpaceType.ROOM) {
+      return [...baseServices, 'Petit-déjeuner inclus', 'Accès piscine'];
+    } else if (space.type === SpaceType.EVENT_SPACE) {
+      return [...baseServices, 'Équipement audiovisuel', 'Service traiteur', 'Support technique'];
+    } else {
+      return baseServices;
+    }
+  }
+  
+  private applyPromoCodeIfNeeded(): void {
+    // Apply promo code if provided
+    if (this.bookingParams.promo) {
+      const promoCode = this.bookingParams.promo.toUpperCase();
       
-      this.isLoading = false;
-    }, 1500);
+      switch(promoCode) {
+        case 'WELCOME10':
+          // Apply 10% discount
+          this.availableSpaces.forEach(space => {
+            if (space.price) {
+              space.originalPrice = space.price;
+              space.price = Math.round(space.price * 0.9);
+            }
+          });
+          this.notificationService.showSuccess(`Promotion WELCOME10 appliquée: 10% de réduction`);
+          break;
+        case 'SUMMER25':
+          // Apply 25% discount
+          this.availableSpaces.forEach(space => {
+            if (space.price) {
+              space.originalPrice = space.price;
+              space.price = Math.round(space.price * 0.75);
+            }
+          });
+          this.notificationService.showSuccess(`Promotion SUMMER25 appliquée: 25% de réduction`);
+          break;
+        default:
+          this.notificationService.showError(`Code promo "${promoCode}" non reconnu`);
+      }
+    }
+  }
+  
+  getSpaceImageUrl(space: Space): string {
+    // Get primary image URL
+    if (space.images && space.images.length > 0) {
+      const primaryImage = space.images.find(img => img.isPrimary);
+      return primaryImage ? primaryImage.url : space.images[0].url;
+    }
+    
+    // Fallback image
+    return `assets/images/rooms/default.jpg`;
+  }
+  
+  isRoomSpace(space: Space): space is RoomSpace {
+    return space.type === SpaceType.ROOM;
   }
   
   formatDisplayDate(dateStr: string): string {
@@ -467,17 +434,35 @@ export class SpaceSelectionComponent implements OnInit {
   }
   
   selectSpace(space: AvailableSpace): void {
-    // Deselect all spaces first
-    this.availableSpaces.forEach(s => s.selected = false);
+    // Check availability in real-time using service
+    const checkIn = new Date(this.bookingParams.checkIn);
+    const checkOut = new Date(this.bookingParams.checkOut);
     
-    // Select the clicked space
-    space.selected = true;
+    this.spaceService.checkAvailability(space.id, checkIn, checkOut)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(available => {
+        if (available) {
+          // Deselect all spaces first
+          this.availableSpaces.forEach(s => s.selected = false);
+          
+          // Select the clicked space
+          space.selected = true;
+          
+          this.notificationService.showSuccess(`${space.name} sélectionné`);
+        } else {
+          this.notificationService.showError(`Désolé, ${space.name} n'est plus disponible pour les dates sélectionnées`);
+          
+          // Refresh availabilities
+          this.loadAvailableSpaces();
+        }
+      });
   }
   
   continueToGuestInfo(): void {
     const selectedSpace = this.availableSpaces.find(space => space.selected);
     
     if (!selectedSpace) {
+      this.notificationService.showError('Veuillez sélectionner un espace');
       return;
     }
     

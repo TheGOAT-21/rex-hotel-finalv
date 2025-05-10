@@ -8,6 +8,9 @@ import { CardComponent } from '../../../shared/components/ui/card/card.component
 import { InputFieldComponent } from '../../../shared/components/forms/input-field/input-field.component';
 import { ButtonComponent } from '../../../shared/components/ui/button/button.component';
 import { AlertComponent } from '../../../shared/components/ui/alert/alert.component';
+import { BookingService } from '../../../core/services/booking.service';
+import { Booking } from '../../../core/interfaces/booking.interface';
+import { LoaderComponent } from '../../../shared/components/ui/loader/loader.component';
 
 @Component({
   selector: 'app-booking-lookup',
@@ -20,7 +23,8 @@ import { AlertComponent } from '../../../shared/components/ui/alert/alert.compon
     CardComponent,
     InputFieldComponent,
     ButtonComponent,
-    AlertComponent
+    AlertComponent,
+    LoaderComponent
   ],
   template: `
     <div class="min-h-screen bg-background py-12">
@@ -131,6 +135,39 @@ import { AlertComponent } from '../../../shared/components/ui/alert/alert.compon
             </form>
           </app-card>
           
+          <!-- Found Booking Result -->
+          <div *ngIf="foundBooking" class="mt-8">
+            <app-card [hasHeader]="true">
+              <div card-header class="flex justify-between items-center">
+                <h3 class="text-lg font-title font-bold text-primary">Réservation trouvée</h3>
+                <span class="px-3 py-1 rounded-full text-sm font-semibold"
+                      [ngClass]="{
+                        'bg-success bg-opacity-10 text-success': foundBooking.status === 'confirmed',
+                        'bg-error bg-opacity-10 text-error': foundBooking.status === 'cancelled',
+                        'bg-primary bg-opacity-10 text-primary': foundBooking.status === 'pending'
+                      }">
+                  {{ getStatusLabel(foundBooking.status) }}
+                </span>
+              </div>
+              
+              <div class="mb-4">
+                <p class="mb-2"><span class="font-semibold">Code de confirmation:</span> {{ foundBooking.confirmationCode }}</p>
+                <p class="mb-2"><span class="font-semibold">Client:</span> {{ foundBooking.guestInfo.firstName }} {{ foundBooking.guestInfo.lastName }}</p>
+                <p class="mb-2"><span class="font-semibold">Espace:</span> {{ foundBooking.spaceType }}</p>
+                <p class="mb-2"><span class="font-semibold">Arrivée:</span> {{ formatDate(foundBooking.checkIn) }}</p>
+                <p><span class="font-semibold">Départ:</span> {{ formatDate(foundBooking.checkOut) }}</p>
+              </div>
+              
+              <div class="flex justify-end">
+                <app-button
+                  (onClick)="viewBookingDetails(foundBooking.confirmationCode)"
+                >
+                  Voir les détails
+                </app-button>
+              </div>
+            </app-card>
+          </div>
+          
           <!-- Need Help -->
           <div class="mt-8 text-center">
             <p class="text-text mb-2">Vous n'avez pas reçu votre confirmation ?</p>
@@ -145,8 +182,13 @@ export class BookingLookupComponent {
   lookupForm: FormGroup;
   isSubmitting = false;
   errorMessage = '';
+  foundBooking: Booking | null = null;
   
-  constructor(private fb: FormBuilder, private router: Router) {
+  constructor(
+    private fb: FormBuilder, 
+    private router: Router,
+    private bookingService: BookingService
+  ) {
     // Initialize form
     this.lookupForm = this.fb.group({
       lookupMethod: ['confirmationCode', Validators.required],
@@ -218,6 +260,10 @@ export class BookingLookupComponent {
   }
   
   onSubmit(): void {
+    // Reset any previous results or errors
+    this.foundBooking = null;
+    this.errorMessage = '';
+    
     // Mark all fields as touched to show validation errors
     Object.keys(this.lookupForm.controls).forEach(key => {
       const control = this.lookupForm.get(key);
@@ -229,59 +275,87 @@ export class BookingLookupComponent {
     }
     
     this.isSubmitting = true;
-    this.errorMessage = '';
     
-    // In a real application, this would be a service call
-    // For this demo, we'll simulate success for REX12345
-    setTimeout(() => {
-      this.isSubmitting = false;
-      
-      const method = this.lookupForm.get('lookupMethod')?.value;
-      
-      if (method === 'confirmationCode') {
-        const code = this.lookupForm.get('confirmationCode')?.value;
-        
-        if (code === 'REX12345') {
-          // Navigate to confirmation page with mock data
-          this.router.navigate(['/booking/confirmation', code], {
-            queryParams: {
-              checkIn: '2025-05-15',
-              checkOut: '2025-05-18',
-              spaceName: 'Chambre Deluxe',
-              price: 280,
-              totalPrice: 840,
-              nights: 3,
-              firstName: 'Jean',
-              lastName: 'Dupont',
-              email: 'jean.dupont@example.com'
-            }
-          });
+    const method = this.lookupForm.get('lookupMethod')?.value;
+    
+    if (method === 'confirmationCode') {
+      const code = this.lookupForm.get('confirmationCode')?.value;
+      this.searchByConfirmationCode(code);
+    } else {
+      const email = this.lookupForm.get('email')?.value;
+      const lastName = this.lookupForm.get('lastName')?.value;
+      this.searchByEmailAndName(email, lastName);
+    }
+  }
+  
+  private searchByConfirmationCode(code: string): void {
+    this.bookingService.getBookingByConfirmationCode(code).subscribe({
+      next: (booking) => {
+        this.isSubmitting = false;
+        if (booking) {
+          this.foundBooking = booking;
         } else {
           this.errorMessage = 'Aucune réservation trouvée avec ce code de confirmation.';
         }
-      } else {
-        const email = this.lookupForm.get('email')?.value;
-        const lastName = this.lookupForm.get('lastName')?.value;
+      },
+      error: (err) => {
+        this.isSubmitting = false;
+        this.errorMessage = 'Une erreur est survenue lors de la recherche. Veuillez réessayer.';
+        console.error('Error searching booking:', err);
+      }
+    });
+  }
+  
+  private searchByEmailAndName(email: string, lastName: string): void {
+    this.bookingService.searchBookingsByEmail(email).subscribe({
+      next: (bookings) => {
+        this.isSubmitting = false;
+        // Filter bookings by last name
+        const matchingBookings = bookings.filter(
+          b => b.guestInfo.lastName.toLowerCase() === lastName.toLowerCase()
+        );
         
-        if (email === 'jean.dupont@example.com' && lastName === 'Dupont') {
-          // Navigate to confirmation page with mock data
-          this.router.navigate(['/booking/confirmation', 'REX12345'], {
-            queryParams: {
-              checkIn: '2025-05-15',
-              checkOut: '2025-05-18',
-              spaceName: 'Chambre Deluxe',
-              price: 280,
-              totalPrice: 840,
-              nights: 3,
-              firstName: 'Jean',
-              lastName: 'Dupont',
-              email: 'jean.dupont@example.com'
-            }
-          });
+        if (matchingBookings.length > 0) {
+          // Show the most recent booking
+          this.foundBooking = matchingBookings.sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )[0];
         } else {
           this.errorMessage = 'Aucune réservation trouvée avec ces informations.';
         }
+      },
+      error: (err) => {
+        this.isSubmitting = false;
+        this.errorMessage = 'Une erreur est survenue lors de la recherche. Veuillez réessayer.';
+        console.error('Error searching booking:', err);
       }
-    }, 1500);
+    });
+  }
+  
+  viewBookingDetails(confirmationCode: string | undefined): void {
+    if (!confirmationCode) return;
+    
+    // Navigate to booking confirmation page with the confirmation code
+    this.router.navigate(['/booking/confirmation', confirmationCode]);
+  }
+  
+  formatDate(date: Date | string): string {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    return dateObj.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+  
+  getStatusLabel(status: string): string {
+    switch(status) {
+      case 'confirmed': return 'Confirmée';
+      case 'pending': return 'En attente';
+      case 'cancelled': return 'Annulée';
+      case 'checked-in': return 'Enregistrée';
+      case 'checked-out': return 'Terminée';
+      default: return status;
+    }
   }
 }

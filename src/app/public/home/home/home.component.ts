@@ -1,7 +1,8 @@
 // src/app/public/home/home/home.component.ts
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { HeroComponent } from '../hero/hero.component';
 import { FeatureShowcaseComponent } from '../feature-showcase/feature-showcase.component';
 import { ImageWithOverlayComponent } from '../../../shared/components/content/image-with-overlay/image-with-overlay.component';
@@ -11,6 +12,12 @@ import { CardComponent } from '../../../shared/components/ui/card/card.component
 import { ButtonComponent } from '../../../shared/components/ui/button/button.component';
 import { SpaceCardComponent } from '../../spaces/space-card/space-card.component';
 import { PromotionComponent } from '../../../shared/components/content/promotion/promotion.component';
+import { LoaderComponent } from '../../../shared/components/ui/loader/loader.component';
+import { SpaceService } from '../../../core/services/space.service';
+import { BookingService } from '../../../core/services/booking.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { LocalStorageService } from '../../../core/services/local-storage.service';
+import { Space, SpaceType, RoomSpace } from '../../../core/interfaces/space.interface';
 
 @Component({
   selector: 'app-home',
@@ -18,6 +25,7 @@ import { PromotionComponent } from '../../../shared/components/content/promotion
   imports: [
     CommonModule, 
     RouterModule,
+    FormsModule,
     HeroComponent,
     FeatureShowcaseComponent,
     ImageWithOverlayComponent,
@@ -26,7 +34,8 @@ import { PromotionComponent } from '../../../shared/components/content/promotion
     CardComponent,
     ButtonComponent,
     SpaceCardComponent,
-    PromotionComponent
+    PromotionComponent,
+    LoaderComponent
   ],
   template: `
     <!-- Hero Section -->
@@ -104,67 +113,31 @@ import { PromotionComponent } from '../../../shared/components/content/promotion
           [centered]="true"
         ></app-section-title>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
-          <!-- Chambre Classique -->
+        <div *ngIf="isLoading" class="flex justify-center py-8">
+          <app-loader [text]="'Chargement des espaces...'"></app-loader>
+        </div>
+        
+        <div *ngIf="!isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
           <app-space-card
-            id="chambre-classique"
-            name="Chambre Classique"
-            type="Chambre"
-            description="Une chambre élégante avec lit double et toutes les commodités essentielles pour un séjour confortable."
-            imageUrl="assets/images/rooms/classic-room.png"
-            price="150"
-            priceUnit="FCFA / nuit"
+            *ngFor="let space of featuredSpaces"
+            [id]="space.id"
+            [name]="space.name"
+            [type]="getSpaceTypeName(space.type)"
+            [description]="space.description"
+            [imageUrl]="getMainImageUrl(space)"
+            [price]="space.price || 0"
+            [priceUnit]="space.price ? 'FCFA / nuit' : ''"
             buttonText="Réserver"
-            [available]="true"
-            [features]="[
-              { name: 'Wifi gratuit', icon: 'wifi' },
-              { name: 'Climatisation', icon: 'air-conditioner' },
-              { name: 'TV écran plat', icon: 'tv' }
-            ]"
-            detailPath="/spaces/chambre-classique"
-          ></app-space-card>
-          
-          <!-- Suite Deluxe -->
-          <app-space-card
-            id="suite-deluxe"
-            name="Suite Deluxe"
-            type="Suite"
-            description="Une suite spacieuse avec vue panoramique, salon séparé et lit king-size pour un séjour de luxe."
-            imageUrl="assets/images/rooms/deluxe1.png"
-            price="280"
-            priceUnit="FCFA / nuit"
-            buttonText="Réserver"
-            [available]="true"
-            [features]="[
-              { name: 'Balcon privé', icon: 'balcony' },
-              { name: 'Minibar premium', icon: 'fridge' },
-              { name: 'Salle de bain luxueuse', icon: 'shower' }
-            ]"
-            detailPath="/spaces/suite-deluxe"
-          ></app-space-card>
-          
-          <!-- Penthouse -->
-          <app-space-card
-            id="penthouse"
-            name="Penthouse"
-            type="Suite Executive"
-            description="Notre suite exclusive au dernier étage offrant une vue imprenable sur la ville et des services personnalisés."
-            imageUrl="assets/images/rooms/penthouse1.png"
-            price="750"
-            priceUnit="FCFA / nuit"
-            buttonText="Réserver"
-            [available]="true"
-            badge="EXCLUSIF"
-            [features]="[
-              { name: 'Terrasse privée', icon: 'terrace' },
-              { name: 'Service majordome', icon: 'butler' },
-              { name: 'Jacuzzi privé', icon: 'jacuzzi' }
-            ]"
-            detailPath="/spaces/penthouse"
+            [available]="space.available"
+            [badge]="getBadge(space)"
+            [features]="formatFeatures(space.features)"
+            [detailPath]="'/spaces/' + space.id"
+            (cardClick)="onSpaceCardClick(space.id)"
+            (buttonClick)="onReservationClick($event)"
           ></app-space-card>
         </div>
         
-        <div class="text-center mt-12">
+        <div *ngIf="!isLoading" class="text-center mt-12">
           <a routerLink="/spaces" class="inline-block bg-primary text-background font-bold uppercase px-8 py-3 rounded hover:bg-primary-hover transition-colors">
             Voir tous nos espaces
           </a>
@@ -227,7 +200,7 @@ import { PromotionComponent } from '../../../shared/components/content/promotion
       </div>
     </section>
     
-    <!-- Newsletter (Optional) -->
+    <!-- Newsletter -->
     <section class="py-16 bg-background">
       <div class="container mx-auto px-4 max-w-2xl">
         <div class="text-center mb-8">
@@ -235,26 +208,29 @@ import { PromotionComponent } from '../../../shared/components/content/promotion
           <p class="text-text">Inscrivez-vous à notre newsletter pour recevoir nos offres exclusives et actualités</p>
         </div>
         
-        <form class="flex flex-col md:flex-row gap-4">
+        <form class="flex flex-col md:flex-row gap-4" (submit)="$event.preventDefault(); subscribeNewsletter()">
           <input 
             type="email" 
             placeholder="Votre adresse email" 
+            [(ngModel)]="newsletterEmail"
+            name="newsletterEmail"
             class="flex-1 px-4 py-3 bg-dark-200 border border-dark-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
             required
           />
           <button 
             type="submit" 
             class="bg-primary text-background font-bold uppercase px-6 py-3 rounded hover:bg-primary-hover transition-colors"
+            [disabled]="isNewsletterSubmitting"
           >
-            S'inscrire
+            <span *ngIf="!isNewsletterSubmitting">S'inscrire</span>
+            <span *ngIf="isNewsletterSubmitting">Traitement...</span>
           </button>
         </form>
       </div>
     </section>
-  `,
-  styles: []
+  `
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   features = [
     {
       title: 'WiFi Gratuit',
@@ -287,6 +263,184 @@ export class HomeComponent {
       iconName: 'children'
     }
   ];
+
+  featuredSpaces: Space[] = [];
+  isLoading = true;
+  
+  // Newsletter form
+  newsletterEmail = '';
+  isNewsletterSubmitting = false;
+  
+  // User preferences
+  hasShownWelcomeNotification = false;
+
+  constructor(
+    private spaceService: SpaceService,
+    private bookingService: BookingService,
+    private notificationService: NotificationService,
+    private localStorageService: LocalStorageService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadFeaturedSpaces();
+    this.checkAndShowWelcomeNotification();
+  }
+
+  loadFeaturedSpaces(): void {
+    this.isLoading = true;
+    
+    // Get a filtered selection of featured spaces
+    this.spaceService.searchSpaces({
+      available: true
+    }).subscribe(
+      spaces => {
+        // Organize spaces by type and select featured ones
+        const roomSpaces = spaces.filter(space => space.type === SpaceType.ROOM);
+        const suiteSpaces = spaces.filter(space => 
+          space.type === SpaceType.ROOM && 
+          (space.name.toLowerCase().includes('suite') || space.name.toLowerCase().includes('penthouse'))
+        );
+        const eventSpaces = spaces.filter(space => space.type === SpaceType.EVENT_SPACE);
+        
+        // Ensure we have a mix of different types
+        this.featuredSpaces = [];
+        
+        // Add a classic room
+        const classicRoom = roomSpaces.find(s => s.name.toLowerCase().includes('classique'));
+        if (classicRoom) this.featuredSpaces.push(classicRoom);
+        
+        // Add a suite
+        const deluxeSuite = suiteSpaces.find(s => s.name.toLowerCase().includes('deluxe'));
+        if (deluxeSuite) this.featuredSpaces.push(deluxeSuite);
+        
+        // Add a penthouse or premium room
+        const penthouse = suiteSpaces.find(s => s.name.toLowerCase().includes('penthouse'));
+        if (penthouse) this.featuredSpaces.push(penthouse);
+        
+        // If we don't have 3 spaces yet, add more from other categories
+        if (this.featuredSpaces.length < 3) {
+          const remaining = 3 - this.featuredSpaces.length;
+          
+          // Use other available rooms
+          const otherRooms = roomSpaces.filter(r => 
+            !this.featuredSpaces.some(fs => fs.id === r.id)
+          ).slice(0, remaining);
+          
+          this.featuredSpaces.push(...otherRooms);
+        }
+        
+        this.isLoading = false;
+      },
+      error => {
+        console.error('Error loading featured spaces', error);
+        this.isLoading = false;
+        this.notificationService.showError(
+          'Impossible de charger les espaces. Veuillez réessayer plus tard.',
+          'Erreur'
+        );
+      }
+    );
+  }
+  
+  getMainImageUrl(space: Space): string {
+    if (space.images && space.images.length > 0) {
+      const primaryImage = space.images.find(img => img.isPrimary);
+      return primaryImage ? primaryImage.url : space.images[0].url;
+    }
+    return 'assets/images/rooms/placeholder.jpg';
+  }
+  
+  getSpaceTypeName(type: SpaceType): string {
+    switch(type) {
+      case SpaceType.ROOM: return 'Chambre';
+      case SpaceType.RESTAURANT: return 'Restaurant';
+      case SpaceType.BAR: return 'Bar';
+      case SpaceType.EVENT_SPACE: return 'Espace événementiel';
+      default: return 'Espace';
+    }
+  }
+  
+  getBadge(space: Space): string {
+    if (space.name.toLowerCase().includes('penthouse')) {
+      return 'EXCLUSIF';
+    }
+    
+    if (space.price && space.price > 500) {
+      return 'PREMIUM';
+    }
+    
+    return '';
+  }
+  
+  formatFeatures(features: any[]): { name: string, icon?: string }[] {
+    return features.slice(0, 3).map(feature => ({
+      name: feature.name,
+      icon: feature.icon
+    }));
+  }
+  
+  onSpaceCardClick(spaceId: string): void {
+    // Track click for analytics (could be implemented later)
+    console.log(`Space clicked: ${spaceId}`);
+  }
+  
+  onReservationClick(event: { id: string; event: MouseEvent }): void {
+    event.event.preventDefault();
+    event.event.stopPropagation();
+    
+    // Navigate to booking page with pre-selected space
+    window.location.href = `/booking?spaceType=${encodeURIComponent(this.getSpaceTypeForId(event.id))}`;
+  }
+  
+  getSpaceTypeForId(spaceId: string): string {
+    const space = this.featuredSpaces.find(s => s.id === spaceId);
+    if (!space) return 'room';
+    
+    if (space.name.toLowerCase().includes('suite')) return 'suite';
+    if (space.name.toLowerCase().includes('penthouse')) return 'penthouse';
+    if (space.type === SpaceType.EVENT_SPACE) return 'event_space';
+    
+    return 'room';
+  }
+  
+  subscribeNewsletter(): void {
+    if (!this.newsletterEmail || this.isNewsletterSubmitting) return;
+    
+    this.isNewsletterSubmitting = true;
+    
+    // Simulate API call
+    setTimeout(() => {
+      this.isNewsletterSubmitting = false;
+      this.newsletterEmail = '';
+      
+      // Show success notification
+      this.notificationService.showSuccess(
+        'Vous êtes maintenant inscrit à notre newsletter!', 
+        'Inscription réussie'
+      );
+      
+      // Store subscription in local storage
+      this.localStorageService.set('newsletter_subscribed', true);
+    }, 1500);
+  }
+  
+  checkAndShowWelcomeNotification(): void {
+    // Check if user has already seen the welcome notification
+    const hasShown = this.localStorageService.get('welcome_notification_shown', false);
+    
+    if (!hasShown) {
+      // Show welcome notification after a short delay
+      setTimeout(() => {
+        this.notificationService.showInfo(
+          'Bienvenue au REX Hotel! Découvrez nos offres spéciales actuelles.',
+          'Bienvenue'
+        );
+        
+        // Remember that we've shown the notification
+        this.localStorageService.set('welcome_notification_shown', true);
+      }, 2000);
+    }
+  }
 
   // Helper function to convert string to Date
   convertStringToDate(dateString: string): Date {
