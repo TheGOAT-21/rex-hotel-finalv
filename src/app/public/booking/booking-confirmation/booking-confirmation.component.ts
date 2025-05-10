@@ -85,7 +85,7 @@ import { LoaderComponent } from '../../../shared/components/ui/loader/loader.com
             [dismissible]="false"
           >
             <p class="text-lg font-semibold">Votre réservation est confirmée!</p>
-            <p>Un email de confirmation a été envoyé à {{ booking?.guestInfo?.email || 'votre adresse email' }}</p>
+            <p>Un email de confirmation a été envoyé à {{ booking.guestInfo.email || 'votre adresse email' }}</p>
           </app-alert>
 
           <!-- Booking Confirmation Details -->
@@ -95,12 +95,12 @@ import { LoaderComponent } from '../../../shared/components/ui/loader/loader.com
                 <svg class="w-8 h-8 text-success mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <h3 class="text-xl font-title font-bold">Confirmation #{{ booking?.confirmationCode }}</h3>
+                <h3 class="text-xl font-title font-bold">Confirmation #{{ booking.confirmationCode }}</h3>
               </div>
               
               <div>
                 <span class="text-success px-3 py-1 bg-success bg-opacity-10 rounded-full text-sm font-semibold">
-                  {{ getStatusText(booking?.status) }}
+                  {{ getStatusText(booking.status) }}
                 </span>
               </div>
             </div>
@@ -109,9 +109,9 @@ import { LoaderComponent } from '../../../shared/components/ui/loader/loader.com
             <div class="mb-6">
               <h4 class="font-semibold text-text mb-3">Informations du client</h4>
               <div class="bg-background-alt p-4 rounded-lg">
-                <p class="mb-2"><span class="font-semibold">Nom:</span> {{ booking?.guestInfo?.firstName || '' }} {{ booking?.guestInfo?.lastName || '' }}</p>
-                <p><span class="font-semibold">Email:</span> {{ booking?.guestInfo?.email || '' }}</p>
-                <p *ngIf="booking?.guestInfo?.phone"><span class="font-semibold">Téléphone:</span> {{ booking?.guestInfo?.phone }}</p>
+                <p class="mb-2"><span class="font-semibold">Nom:</span> {{ booking.guestInfo.firstName }} {{ booking.guestInfo.lastName }}</p>
+                <p><span class="font-semibold">Email:</span> {{ booking.guestInfo.email }}</p>
+                <p *ngIf="booking.guestInfo.phone"><span class="font-semibold">Téléphone:</span> {{ booking.guestInfo.phone }}</p>
               </div>
             </div>
             
@@ -120,23 +120,23 @@ import { LoaderComponent } from '../../../shared/components/ui/loader/loader.com
               <h4 class="font-semibold text-text mb-3">Détails de la réservation</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-background-alt p-4 rounded-lg">
-                  <p class="mb-2"><span class="font-semibold">Arrivée:</span> {{ formatDisplayDate(booking?.checkIn) }}</p>
-                  <p class="mb-2"><span class="font-semibold">Départ:</span> {{ formatDisplayDate(booking?.checkOut) }}</p>
-                  <p><span class="font-semibold">Durée du séjour:</span> {{ calculateNights(booking?.checkIn, booking?.checkOut) }} nuit{{ calculateNights(booking?.checkIn, booking?.checkOut) > 1 ? 's' : '' }}</p>
+                  <p class="mb-2"><span class="font-semibold">Arrivée:</span> {{ formatDisplayDate(booking.checkIn) }}</p>
+                  <p class="mb-2"><span class="font-semibold">Départ:</span> {{ formatDisplayDate(booking.checkOut) }}</p>
+                  <p><span class="font-semibold">Durée du séjour:</span> {{ calculateNights(booking.checkIn, booking.checkOut) }} nuit{{ calculateNights(booking.checkIn, booking.checkOut) > 1 ? 's' : '' }}</p>
                 </div>
                 
                 <div class="bg-background-alt p-4 rounded-lg">
-                  <p class="mb-2"><span class="font-semibold">Type d'espace:</span> {{ getSpaceTypeText(booking?.spaceType) }}</p>
-                  <p class="mb-2"><span class="font-semibold">Voyageurs:</span> {{ booking?.guests?.adults || 0 }} adulte{{ (booking?.guests?.adults || 0) > 1 ? 's' : '' }}
-                  <span *ngIf="(booking?.guests?.children || 0) > 0">, {{ booking?.guests?.children || 0 }} enfant{{ (booking?.guests?.children || 0) > 1 ? 's' : '' }}</span></p>
-                  <p><span class="font-semibold">Prix total:</span> {{ booking?.totalPrice || 0 }}FCFA</p>
+                  <p class="mb-2"><span class="font-semibold">Type d'espace:</span> {{ getSpaceTypeText(booking.spaceType) }}</p>
+                  <p class="mb-2"><span class="font-semibold">Voyageurs:</span> {{ booking.guests.adults }} adulte{{ booking.guests.adults > 1 ? 's' : '' }}
+                  <span *ngIf="booking.guests.children > 0">, {{ booking.guests.children }} enfant{{ booking.guests.children > 1 ? 's' : '' }}</span></p>
+                  <p><span class="font-semibold">Prix total:</span> {{ booking.totalPrice || 0 }}FCFA</p>
                 </div>
               </div>
 
               <!-- Special Requests -->
-              <div *ngIf="booking?.specialRequests" class="mt-4 bg-background-alt p-4 rounded-lg">
+              <div *ngIf="booking.specialRequests" class="mt-4 bg-background-alt p-4 rounded-lg">
                 <p class="font-semibold text-text mb-2">Demandes spéciales:</p>
-                <p class="text-text italic">{{ booking?.specialRequests }}</p>
+                <p class="text-text italic">{{ booking.specialRequests }}</p>
               </div>
             </div>
             
@@ -144,7 +144,7 @@ import { LoaderComponent } from '../../../shared/components/ui/loader/loader.com
             <div class="mb-6">
               <h4 class="font-semibold text-text mb-3">Informations de paiement</h4>
               <div class="bg-background-alt p-4 rounded-lg">
-                <p class="mb-2"><span class="font-semibold">Statut du paiement:</span> {{ getPaymentStatusText(booking?.paymentStatus) }}</p>
+                <p class="mb-2"><span class="font-semibold">Statut du paiement:</span> {{ getPaymentStatusText(booking.paymentStatus) }}</p>
                 <p><span class="font-semibold">Méthode de paiement:</span> À régler à l'hôtel</p>
               </div>
             </div>
@@ -341,6 +341,29 @@ export class BookingConfirmationComponent implements OnInit {
   
   sendEmailConfirmation(): void {
     if (!this.booking || this.isEmailSending) return;
+    
+    this.isEmailSending = true;
+    
+    this.bookingService.sendConfirmationEmail(this.booking.id).subscribe({
+      next: () => {
+        // Use notification service to show success message
+        this.notificationService.showSuccess(
+          `Un email de confirmation a été envoyé à ${this.booking?.guestInfo?.email || 'votre adresse email'}`,
+          'Email envoyé'
+        );
+      },
+      error: (error) => {
+        console.error('Error sending confirmation email:', error);
+        this.notificationService.showError(
+          'Une erreur est survenue lors de l\'envoi de l\'email de confirmation',
+          'Erreur'
+        );
+      }
+    });
+  }
+
+  private sendConfirmationEmail(): void {
+    if (!this.booking) return;
     
     this.isEmailSending = true;
     

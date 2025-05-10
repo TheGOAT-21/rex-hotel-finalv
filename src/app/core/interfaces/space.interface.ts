@@ -10,6 +10,7 @@ export enum SpaceType {
     url: string;
     alt: string;
     isPrimary?: boolean;
+    caption?: string;
   }
   
   export interface Feature {
@@ -58,6 +59,7 @@ export enum SpaceType {
     capacity?: number;
     price?: number;
     currency?: string;
+    priceUnit?: string;
     available: boolean;
   }
   

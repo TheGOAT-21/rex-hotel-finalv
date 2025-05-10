@@ -1,35 +1,52 @@
-// contact-form.component.ts
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+// src/app/public/contact/contact-form/contact-form.component.ts
+
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, NgForm } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { InputFieldComponent } from '../../../shared/components/forms/input-field/input-field.component';
 import { ButtonComponent } from '../../../shared/components/ui/button/button.component';
 import { SelectDropdownComponent } from '../../../shared/components/forms/select-dropdown/select-dropdown.component';
+import { AlertComponent } from '../../../shared/components/ui/alert/alert.component';
+import { CardComponent } from '../../../shared/components/ui/card/card.component';
+import { NotificationService } from '../../../core/services/notification.service';
+import { LocalStorageService } from '../../../core/services/local-storage.service';
 
-export interface ContactFormData {
+interface ContactFormData {
   name: string;
   email: string;
   phone: string;
   subject: string;
   message: string;
+  gdprConsent: boolean;
 }
 
 @Component({
   selector: 'app-contact-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputFieldComponent, ButtonComponent, SelectDropdownComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    InputFieldComponent,
+    ButtonComponent,
+    SelectDropdownComponent,
+    AlertComponent,
+    CardComponent
+  ],
   template: `
-    <div class="bg-background-alt rounded-lg p-6 shadow-lg">
-      <h2 *ngIf="title" class="text-2xl font-title font-bold text-primary mb-6">{{ title }}</h2>
+    <app-card>
+      <h2 class="text-2xl font-title font-bold text-primary mb-6">{{ title }}</h2>
       
-      <form #contactForm="ngForm" (ngSubmit)="onSubmit(contactForm)" novalidate>
+      <form [formGroup]="contactForm" (ngSubmit)="onSubmit()">
         <!-- Name Field -->
         <app-input-field
           id="contact-name"
           label="Nom"
           [required]="true"
-          [(value)]="formData.name"
-          [error]="formErrors['name']"
+          [value]="contactForm.get('name')?.value"
+          (valueChange)="updateForm('name', $event)"
+          [error]="getErrorMessage('name')"
         ></app-input-field>
         
         <!-- Email Field -->
@@ -38,8 +55,9 @@ export interface ContactFormData {
           label="Email"
           type="email"
           [required]="true"
-          [(value)]="formData.email"
-          [error]="formErrors['email']"
+          [value]="contactForm.get('email')?.value"
+          (valueChange)="updateForm('email', $event)"
+          [error]="getErrorMessage('email')"
         ></app-input-field>
         
         <!-- Phone Field -->
@@ -47,8 +65,9 @@ export interface ContactFormData {
           id="contact-phone"
           label="Téléphone"
           type="tel"
-          [value]="formData.phone || ''"
-          (valueChange)="formData.phone = $event"
+          [value]="contactForm.get('phone')?.value"
+          (valueChange)="updateForm('phone', $event)"
+          [error]="getErrorMessage('phone')"
         ></app-input-field>
         
         <!-- Subject Field -->
@@ -57,8 +76,9 @@ export interface ContactFormData {
           label="Sujet"
           [required]="true"
           [options]="subjectOptions"
-          [(value)]="formData.subject"
-          [error]="formErrors['subject']"
+          [value]="contactForm.get('subject')?.value"
+          (valueChange)="updateForm('subject', $event)"
+          [error]="getErrorMessage('subject')"
         ></app-select-dropdown>
         
         <!-- Message Field -->
@@ -70,13 +90,20 @@ export interface ContactFormData {
             id="contact-message"
             name="message"
             rows="5"
-            [(ngModel)]="formData.message"
+            formControlName="message"
             required
+            (input)="onMessageInput($event)"
             class="w-full px-4 py-3 bg-dark-200 border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
-            [ngClass]="{'border-error': formErrors['message'], 'border-dark-300': !formErrors['message']}"
+            [ngClass]="{'border-error': getErrorMessage('message'), 'border-dark-300': !getErrorMessage('message')}"
           ></textarea>
-          <div *ngIf="formErrors['message']" class="mt-1 text-sm text-error">
-            {{ formErrors['message'] }}
+          <div *ngIf="getErrorMessage('message')" class="mt-1 text-sm text-error">
+            {{ getErrorMessage('message') }}
+          </div>
+          
+          <!-- Character Count -->
+          <div class="mt-1 text-sm text-text opacity-70 flex justify-between">
+            <span>{{ remainingChars }} caractères restants</span>
+            <span *ngIf="isAutoSaved" class="text-success">Brouillon sauvegardé</span>
           </div>
         </div>
         
@@ -86,26 +113,24 @@ export interface ContactFormData {
             <input 
               type="checkbox" 
               id="gdpr-consent" 
-              name="gdprConsent"
-              [(ngModel)]="gdprConsent"
-              required
+              formControlName="gdprConsent"
               class="appearance-none h-5 w-5 border border-dark-300 rounded bg-dark-200 checked:bg-primary checked:border-primary checked:focus:bg-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-30 transition-colors cursor-pointer"
             />
             <label for="gdpr-consent" class="ml-2 text-text text-sm cursor-pointer">
               J'accepte que mes informations soient utilisées pour me recontacter concernant ma demande.
             </label>
           </div>
-          <div *ngIf="formErrors['gdprConsent']" class="mt-1 text-sm text-error">
-            {{ formErrors['gdprConsent'] }}
+          <div *ngIf="getErrorMessage('gdprConsent')" class="mt-1 text-sm text-error">
+            {{ getErrorMessage('gdprConsent') }}
           </div>
         </div>
         
         <!-- Submit Button -->
         <div class="flex justify-end">
-          <app-button 
+          <button 
             type="submit" 
-            [disabled]="isSubmitting || (!contactForm.valid || !gdprConsent)"
-            [fullWidth]="true"
+            class="bg-primary text-background font-bold uppercase px-6 py-3 rounded hover:bg-primary-hover transition-colors disabled:bg-disabled disabled:cursor-not-allowed"
+            [disabled]="contactForm.invalid || isSubmitting"
           >
             <div class="flex items-center justify-center">
               <span *ngIf="!isSubmitting">Envoyer</span>
@@ -114,24 +139,43 @@ export interface ContactFormData {
                 Envoi en cours...
               </div>
             </div>
-          </app-button>
-        </div>
-        
-        <!-- Success / Error Messages -->
-        <div *ngIf="submitSuccess" class="mt-4 bg-success bg-opacity-10 text-success p-4 rounded">
-          Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.
-        </div>
-        
-        <div *ngIf="submitError" class="mt-4 bg-error bg-opacity-10 text-error p-4 rounded">
-          Une erreur est survenue lors de l'envoi du message. Veuillez réessayer ultérieurement.
+          </button>
         </div>
       </form>
-    </div>
+      
+      <!-- Draft Actions -->
+      <div *ngIf="hasDraft" class="mt-4 flex justify-between items-center border-t border-dark-300 pt-4">
+        <span class="text-text text-sm">Un brouillon est disponible</span>
+        <div class="space-x-4">
+          <button 
+            (click)="clearDraft()"
+            class="text-error hover:underline text-sm"
+          >
+            Supprimer le brouillon
+          </button>
+          <button 
+            (click)="loadDraft()"
+            class="text-primary hover:underline text-sm"
+          >
+            Charger le brouillon
+          </button>
+        </div>
+      </div>
+    </app-card>
   `
 })
-export class ContactFormComponent {
-  @Input() title = 'Contactez-nous';
-  @Input() subjectOptions = [
+export class ContactFormComponent implements OnInit, OnDestroy {
+  title = 'Contactez-nous';
+  contactForm: FormGroup;
+  isSubmitting = false;
+  isAutoSaved = false;
+  hasDraft = false;
+  maxLength = 1000;
+  remainingChars = this.maxLength;
+  private autoSaveSubscription?: Subscription;
+  private readonly STORAGE_KEY = 'contact_form_draft';
+  
+  subjectOptions = [
     { value: '', label: 'Sélectionnez un sujet' },
     { value: 'reservation', label: 'Réservation' },
     { value: 'information', label: 'Demande d\'information' },
@@ -141,89 +185,130 @@ export class ContactFormComponent {
     { value: 'other', label: 'Autre' }
   ];
   
-  @Output() formSubmit = new EventEmitter<ContactFormData>();
+  constructor(
+    private fb: FormBuilder,
+    private notificationService: NotificationService,
+    private storageService: LocalStorageService
+  ) {
+    this.contactForm = this.fb.group({
+      name: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      phone: [''],
+      subject: ['', Validators.required],
+      message: ['', [Validators.required, Validators.maxLength(this.maxLength)]],
+      gdprConsent: [false, Validators.requiredTrue]
+    });
+  }
   
-  formData: ContactFormData = {
-    name: '',
-    email: '',
-    phone: '',
-    subject: '',
-    message: ''
-  };
-  
-  formErrors: { [key: string]: string } = {};
-  gdprConsent = false;
-  isSubmitting = false;
-  submitSuccess = false;
-  submitError = false;
-  
-  onSubmit(form: NgForm) {
-    // Reset error states
-    this.formErrors = {};
-    this.submitSuccess = false;
-    this.submitError = false;
+  ngOnInit(): void {
+    // Vérifier s'il existe un brouillon
+    const draft = this.storageService.get<ContactFormData>(this.STORAGE_KEY);
+    this.hasDraft = !!draft;
     
-    // Form validation
-    if (!form.valid || !this.gdprConsent) {
-      this.validateForm();
+    // Configurer l'auto-sauvegarde
+    this.autoSaveSubscription = this.contactForm.valueChanges.pipe(
+      debounceTime(1000),
+      distinctUntilChanged()
+    ).subscribe(() => {
+      if (this.contactForm.dirty && !this.contactForm.pristine) {
+        this.saveDraft();
+      }
+    });
+  }
+  
+  ngOnDestroy(): void {
+    if (this.autoSaveSubscription) {
+      this.autoSaveSubscription.unsubscribe();
+    }
+  }
+  
+  updateForm(controlName: string, value: any): void {
+    this.contactForm.patchValue({ [controlName]: value });
+    this.contactForm.get(controlName)?.markAsTouched();
+  }
+  
+  onMessageInput(event: any): void {
+    const value = event.target.value;
+    this.remainingChars = this.maxLength - value.length;
+  }
+  
+  getErrorMessage(controlName: string): string {
+    const control = this.contactForm.get(controlName);
+    
+    if (!control || !control.errors || !control.touched) {
+      return '';
+    }
+    
+    if (control.errors['required']) {
+      return 'Ce champ est requis';
+    }
+    
+    if (control.errors['email']) {
+      return 'Veuillez entrer une adresse email valide';
+    }
+    
+    if (control.errors['maxlength']) {
+      return `Maximum ${this.maxLength} caractères`;
+    }
+    
+    if (control.errors['requiredTrue']) {
+      return 'Vous devez accepter les conditions';
+    }
+    
+    return 'Valeur invalide';
+  }
+  
+  saveDraft(): void {
+    const formValue = this.contactForm.value;
+    this.storageService.set(this.STORAGE_KEY, formValue);
+    this.isAutoSaved = true;
+    this.hasDraft = true;
+    
+    // Reset le status après 3 secondes
+    setTimeout(() => {
+      this.isAutoSaved = false;
+    }, 3000);
+  }
+  
+  loadDraft(): void {
+    const draft = this.storageService.get<ContactFormData>(this.STORAGE_KEY);
+    if (draft) {
+      this.contactForm.patchValue(draft);
+      this.remainingChars = this.maxLength - (draft.message?.length || 0);
+      this.notificationService.showInfo('Brouillon chargé avec succès');
+    }
+  }
+  
+  clearDraft(): void {
+    this.storageService.remove(this.STORAGE_KEY);
+    this.hasDraft = false;
+    this.contactForm.reset();
+    this.notificationService.showInfo('Brouillon supprimé');
+  }
+  
+  onSubmit(): void {
+    if (this.contactForm.invalid) {
       return;
     }
     
-    // Show submitting state
     this.isSubmitting = true;
     
-    // Emit form data
-    this.formSubmit.emit(this.formData);
-    
-    // Simulate API call (replace with actual API call)
+    // Simuler un appel API
     setTimeout(() => {
       this.isSubmitting = false;
       
-      // Successful submission
-      this.submitSuccess = true;
+      // Supprimer le brouillon en cas de succès
+      this.storageService.remove(this.STORAGE_KEY);
+      this.hasDraft = false;
       
-      // Reset form
-      this.resetForm(form);
+      // Réinitialiser le formulaire
+      this.contactForm.reset();
+      
+      // Afficher une notification de succès
+      this.notificationService.showSuccess(
+        'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
+        'Message envoyé'
+      );
     }, 1500);
-  }
-  
-  private validateForm() {
-    if (!this.formData.name) {
-      this.formErrors['name'] = 'Veuillez entrer votre nom';
-    }
-    
-    if (!this.formData.email) {
-      this.formErrors['email'] = 'Veuillez entrer votre email';
-    } else if (!this.isValidEmail(this.formData.email)) {
-      this.formErrors['email'] = 'Veuillez entrer un email valide';
-    }
-    
-    if (!this.formData.subject) {
-      this.formErrors['subject'] = 'Veuillez sélectionner un sujet';
-    }
-    
-    if (!this.formData.message) {
-      this.formErrors['message'] = 'Veuillez entrer votre message';
-    }
-    if (!this.gdprConsent) {
-      this.formErrors['gdprConsent'] = 'Vous devez accepter les conditions';
-    }
-  }
-  
-  private isValidEmail(email: string): boolean {
-    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return regex.test(email);
-  }
-  
-  private resetForm(form: NgForm) {
-    form.resetForm();
-    this.formData = {
-      name: '',
-      email: '',
-      phone: '',
-      subject: '',
-      message: ''
-    };
-    this.gdprConsent = false;
   }
 }

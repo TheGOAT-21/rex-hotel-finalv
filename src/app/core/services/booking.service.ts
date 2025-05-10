@@ -200,6 +200,10 @@ export class BookingService {
     );
   }
 
+  sendConfirmationEmail(bookingId: string): Observable<void> {
+    return of(void 0).pipe(delay(1000)); // Simulate email sending
+  }
+
   private generateConfirmationCode(): string {
     return 'REX' + Math.floor(10000 + Math.random() * 90000);
   }

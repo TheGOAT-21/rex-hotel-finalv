@@ -1,19 +1,21 @@
 // src/app/public/spaces/space-gallery/space-gallery.component.ts
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
 
-interface GalleryImage {
-  id: string;
-  url: string;
-  alt: string;
-  isPrimary?: boolean;
-  caption?: string;
-}
+// Services
+import { SpaceService } from '../../../core/services/space.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { LocalStorageService } from '../../../core/services/local-storage.service';
+
+// Interfaces
+import { Image } from '../../../core/interfaces/space.interface';
 
 @Component({
   selector: 'app-space-gallery',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   template: `
     <div class="space-gallery">
       <!-- Main Image Display -->
@@ -26,6 +28,7 @@ interface GalleryImage {
           [alt]="selectedImage.alt" 
           class="w-full h-64 md:h-96 object-cover transition-transform duration-500"
           [ngClass]="{'hover:scale-105': !isFullscreen}"
+          (click)="enableFullscreen && openFullscreen()"
         >
         
         <!-- Navigation Arrows (only if more than 1 image) -->
@@ -70,6 +73,23 @@ interface GalleryImage {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"></path>
           </svg>
         </button>
+        
+        <!-- Add to Favorites Button -->
+        <button 
+          *ngIf="!isFullscreen && spaceId"
+          (click)="toggleFavorite()"
+          class="absolute top-2 left-2 bg-background bg-opacity-50 hover:bg-opacity-70 text-primary rounded-full p-2 transition-all focus:outline-none focus:ring-2 focus:ring-primary"
+          aria-label="Ajouter aux favoris"
+        >
+          <svg class="w-5 h-5" fill="isFavorite ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Loading Indicator -->
+      <div *ngIf="isLoading" class="flex justify-center items-center h-64 md:h-96 bg-background-alt rounded-lg">
+        <div class="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
       </div>
       
       <!-- Thumbnails Grid -->
@@ -148,28 +168,93 @@ interface GalleryImage {
     </div>
   `
 })
-export class SpaceGalleryComponent implements OnInit {
-  @Input() images: GalleryImage[] = [];
-  @Input() enableFullscreen: boolean = true;
+export class SpaceGalleryComponent implements OnInit, OnDestroy {
+  @Input() images: Image[] = [];
+  @Input() enableFullscreen = true;
+  @Input() spaceId?: string;
+  @Input() autoLoad = true;
   
-  selectedImage: GalleryImage | null = null;
-  isFullscreen: boolean = false;
+  selectedImage: Image | null = null;
+  isFullscreen = false;
+  isLoading = false;
+  isFavorite = false;
+  
+  private subscription?: Subscription;
+  private readonly FAVORITES_KEY = 'user_favorites';
+  
+  constructor(
+    private spaceService: SpaceService,
+    private notificationService: NotificationService,
+    private storageService: LocalStorageService,
+    private router: Router
+  ) {}
   
   ngOnInit() {
-    if (this.images.length === 0) {
-      // Add mock images for development
-      this.images = this.getMockImages();
+    // Vérifier si l'espace est dans les favoris
+    this.checkFavoriteStatus();
+    
+    // Si aucune image n'est fournie et que l'autoLoad est activé, charger les images
+    if (this.images.length === 0 && this.spaceId && this.autoLoad) {
+      this.loadSpaceImages();
+    } else if (this.images.length > 0) {
+      // Initialiser avec l'image primaire ou la première image
+      this.initializeSelectedImage();
     }
     
-    // Find primary image or use the first one
+    // Sauvegarder la dernière galerie visitée dans le localStorage
+    if (this.spaceId) {
+      this.storageService.set('last_viewed_space', this.spaceId);
+    }
+  }
+  
+  ngOnDestroy() {
+    // Nettoyer les abonnements
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
+  }
+  
+  loadSpaceImages() {
+    if (!this.spaceId) return;
+    
+    this.isLoading = true;
+    
+    this.subscription = this.spaceService.getSpaceById(this.spaceId).subscribe(
+      space => {
+        if (space) {
+          this.images = space.images || [];
+          this.initializeSelectedImage();
+        }
+        this.isLoading = false;
+      },
+      error => {
+        console.error('Erreur lors du chargement des images:', error);
+        this.notificationService.showError('Impossible de charger les images. Veuillez réessayer plus tard.');
+        this.isLoading = false;
+      }
+    );
+  }
+  
+  initializeSelectedImage() {
+    if (this.images.length === 0) return;
+    
+    // Trouver l'image primaire ou utiliser la première image
     const primaryImage = this.images.find(img => img.isPrimary);
-    this.selectedImage = primaryImage || (this.images.length > 0 ? this.images[0] : null);
+    this.selectedImage = primaryImage || this.images[0];
+    
+    // Sauvegarder l'état de la galerie
+    this.saveGalleryState();
   }
   
   selectImage(id: string) {
     const image = this.images.find(img => img.id === id);
     if (image) {
       this.selectedImage = image;
+      this.saveGalleryState();
+      
+      if (this.enableFullscreen && !this.isFullscreen) {
+        this.openFullscreen();
+      }
     }
   }
   
@@ -179,6 +264,7 @@ export class SpaceGalleryComponent implements OnInit {
     const currentIndex = this.images.findIndex(img => img.id === this.selectedImage?.id);
     const nextIndex = (currentIndex + 1) % this.images.length;
     this.selectedImage = this.images[nextIndex];
+    this.saveGalleryState();
   }
   
   previousImage() {
@@ -187,54 +273,93 @@ export class SpaceGalleryComponent implements OnInit {
     const currentIndex = this.images.findIndex(img => img.id === this.selectedImage?.id);
     const prevIndex = (currentIndex - 1 + this.images.length) % this.images.length;
     this.selectedImage = this.images[prevIndex];
+    this.saveGalleryState();
   }
   
   openFullscreen() {
     this.isFullscreen = true;
-    // Prevent scrolling when modal is open
+    // Empêcher le défilement lorsque le mode plein écran est actif
     document.body.style.overflow = 'hidden';
   }
   
   closeFullscreen() {
     this.isFullscreen = false;
-    // Restore scrolling
+    // Restaurer le défilement
     document.body.style.overflow = '';
   }
   
-  private getMockImages(): GalleryImage[] {
-    // Mock data for development
-    return [
-      {
-        id: '1',
-        url: 'assets/images/rooms/deluxe1.png',
-        alt: 'Vue principale de la Suite Deluxe',
-        isPrimary: true,
-        caption: 'Notre Suite Deluxe avec balcon privé et vue panoramique'
-      },
-      {
-        id: '2',
-        url: 'assets/images/rooms/bathroom.jpg',
-        alt: 'Salle de bain de la Suite Deluxe',
-        caption: 'Salle de bain en marbre avec douche à effet pluie'
-      },
-      {
-        id: '3',
-        url: 'assets/images/rooms/balcony.jpg',
-        alt: 'Balcon de la Suite Deluxe',
-        caption: 'Balcon privé avec vue sur la ville'
-      },
-      {
-        id: '4',
-        url: 'assets/images/rooms/living-area.jpg',
-        alt: 'Espace salon de la Suite Deluxe',
-        caption: 'Espace salon confortable et élégant'
-      },
-      {
-        id: '5',
-        url: 'assets/images/rooms/bedroom.jpg',
-        alt: 'Chambre de la Suite Deluxe',
-        caption: 'Chambre avec lit king-size et draps de luxe'
+  toggleFavorite() {
+    if (!this.spaceId) return;
+    
+    const favorites = this.getFavorites();
+    
+    if (this.isFavorite) {
+      // Retirer des favoris
+      const index = favorites.indexOf(this.spaceId);
+      if (index !== -1) {
+        favorites.splice(index, 1);
+        this.storageService.set(this.FAVORITES_KEY, favorites);
+        this.isFavorite = false;
+        this.notificationService.showInfo('Retiré des favoris');
       }
-    ];
+    } else {
+      // Ajouter aux favoris
+      if (!favorites.includes(this.spaceId)) {
+        favorites.push(this.spaceId);
+        this.storageService.set(this.FAVORITES_KEY, favorites);
+        this.isFavorite = true;
+        this.notificationService.showSuccess('Ajouté aux favoris');
+      }
+    }
+  }
+  
+  shareImage() {
+    if (!this.selectedImage) return;
+    
+    // Créer une URL de partage
+    const shareUrl = `${window.location.origin}/spaces/${this.spaceId}?image=${this.selectedImage.id}`;
+    
+    // Essayer d'utiliser l'API de partage Web si disponible
+    if (navigator.share) {
+      navigator.share({
+        title: this.selectedImage.alt || 'REX Hotel',
+        text: this.selectedImage.caption || 'Découvrez REX Hotel',
+        url: shareUrl
+      }).catch(error => {
+        console.error('Erreur lors du partage:', error);
+        this.notificationService.showError('Impossible de partager l\'image');
+      });
+    } else {
+      // Fallback: copier le lien dans le presse-papier
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        this.notificationService.showSuccess('Lien copié dans le presse-papier');
+      }).catch(error => {
+        console.error('Erreur lors de la copie du lien:', error);
+        this.notificationService.showError('Impossible de copier le lien');
+      });
+    }
+  }
+  
+  // Méthodes privées
+  
+  private checkFavoriteStatus() {
+    if (!this.spaceId) return;
+    
+    const favorites = this.getFavorites();
+    this.isFavorite = favorites.includes(this.spaceId);
+  }
+  
+  private getFavorites(): string[] {
+    return this.storageService.get<string[]>(this.FAVORITES_KEY, []) ?? [];
+  }
+  
+  private saveGalleryState() {
+    if (!this.spaceId || !this.selectedImage) return;
+    
+    // Sauvegarder l'état actuel de la galerie pour restauration ultérieure
+    this.storageService.set(`gallery_state_${this.spaceId}`, {
+      selectedImageId: this.selectedImage.id,
+      timestamp: Date.now()
+    }, 3600); // expire après 1 heure
   }
 }

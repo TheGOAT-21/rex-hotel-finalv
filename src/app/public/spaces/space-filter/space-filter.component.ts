@@ -1,7 +1,11 @@
-// space-filter.component.ts
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+// src/app/public/spaces/space-filter/space-filter.component.ts
+
+import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SpaceService } from '../../../core/services/space.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { SpaceType } from '../../../core/interfaces/space.interface';
 
 export interface FilterOption {
   id: string;
@@ -33,7 +37,7 @@ export interface SpaceFilter {
           (click)="resetFilters()"
           class="text-sm text-primary hover:underline mb-3 inline-flex items-center"
         >
-          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
           Réinitialiser les filtres
@@ -106,31 +110,6 @@ export interface SpaceFilter {
         </div>
       </div>
       
-      <!-- Capacity Filter -->
-      <div class="mb-6" *ngIf="showCapacityFilter">
-        <h4 class="text-text font-semibold mb-2">Capacité</h4>
-        <div class="space-y-2">
-          <div 
-            *ngFor="let option of capacityOptions" 
-            class="flex items-center"
-          >
-            <input 
-              type="radio" 
-              [id]="'capacity-' + option.id" 
-              name="capacity"
-              [value]="option.id"
-              [checked]="filter.capacity === +option.id"
-              (change)="updateCapacityFilter(+option.id)"
-              class="appearance-none h-4 w-4 border border-dark-300 rounded-full bg-dark-200 checked:bg-primary checked:border-primary checked:focus:bg-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-30 transition-colors cursor-pointer relative before:content-[''] before:absolute before:w-1.5 before:h-1.5 before:rounded-full before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:bg-background before:scale-0 checked:before:scale-100 before:transition-transform"
-            />
-            <label [for]="'capacity-' + option.id" class="ml-2 text-text text-sm cursor-pointer">
-              {{ option.label }}
-              <span *ngIf="option.count !== undefined" class="text-text opacity-60 ml-1">({{ option.count }})</span>
-            </label>
-          </div>
-        </div>
-      </div>
-      
       <!-- Features Filter -->
       <div class="mb-6" *ngIf="featureOptions && featureOptions.length">
         <h4 class="text-text font-semibold mb-2">Caractéristiques</h4>
@@ -182,16 +161,16 @@ export interface SpaceFilter {
     </div>
   `
 })
-export class SpaceFilterComponent {
-  @Input() typeOptions: FilterOption[] = [];
-  @Input() featureOptions: FilterOption[] = [];
-  @Input() capacityOptions: FilterOption[] = [];
-  @Input() minPriceOption = 0;
-  @Input() maxPriceOption = 1000;
-  @Input() currencySymbol = 'FCFA';
+export class SpaceFilterComponent implements OnInit {
   @Input() showPriceFilter = true;
   @Input() showCapacityFilter = true;
   @Input() showAvailabilityFilter = true;
+  @Input() currencySymbol = 'FCFA';
+  @Input() typeOptions: FilterOption[] = [];
+  @Input() capacityOptions: FilterOption[] = [];
+  @Input() featureOptions: FilterOption[] = [];
+  @Input() maxPriceOption = 1000;
+  @Input() minPriceOption = 0;
   
   @Input() filter: SpaceFilter = {
     availableOnly: true,
@@ -200,15 +179,78 @@ export class SpaceFilterComponent {
   
   @Output() filterChange = new EventEmitter<SpaceFilter>();
   
+  constructor(
+    private spaceService: SpaceService,
+    private notificationService: NotificationService
+  ) {}
+  
+  ngOnInit(): void {
+    this.loadFilterOptions();
+  }
+  
   get showResetButton(): boolean {
     return !!(this.filter.type || 
               this.filter.minPrice || 
               this.filter.maxPrice || 
-              (this.filter.features && this.filter.features.length) || 
-              this.filter.capacity);
+              (this.filter.features && this.filter.features.length));
   }
   
-  updateTypeFilter(typeId: string) {
+  private loadFilterOptions(): void {
+    // Charger les options de type d'espace
+    this.spaceService.getAllSpaces().subscribe(
+      spaces => {
+        // Compter les espaces par type
+        const typeCounts = new Map<string, number>();
+        spaces.forEach(space => {
+          const count = typeCounts.get(space.type) || 0;
+          typeCounts.set(space.type, count + 1);
+        });
+        
+        // Créer les options de type
+        this.typeOptions = [
+          { id: '', label: 'Tous les types' },
+          { id: SpaceType.ROOM, label: 'Chambres', count: typeCounts.get(SpaceType.ROOM) || 0 },
+          { id: SpaceType.RESTAURANT, label: 'Restaurants', count: typeCounts.get(SpaceType.RESTAURANT) || 0 },
+          { id: SpaceType.BAR, label: 'Bars', count: typeCounts.get(SpaceType.BAR) || 0 },
+          { id: SpaceType.EVENT_SPACE, label: 'Salles événementielles', count: typeCounts.get(SpaceType.EVENT_SPACE) || 0 }
+        ];
+        
+        // Trouver les min/max prix
+        const prices = spaces
+          .map(space => space.price)
+          .filter(price => typeof price === 'number') as number[];
+        
+        if (prices.length > 0) {
+          this.minPriceOption = Math.min(...prices);
+          this.maxPriceOption = Math.max(...prices);
+        }
+        
+        // Créer les options de caractéristiques
+        const features = new Map<string, number>();
+        spaces.forEach(space => {
+          space.features.forEach(feature => {
+            const count = features.get(feature.name) || 0;
+            features.set(feature.name, count + 1);
+          });
+        });
+        
+        this.featureOptions = Array.from(features.entries()).map(([name, count]) => ({
+          id: name.toLowerCase(),
+          label: name,
+          count
+        }));
+      },
+      error => {
+        this.notificationService.showError(
+          'Erreur lors du chargement des options de filtrage',
+          'Erreur'
+        );
+        console.error('Erreur lors du chargement des espaces :', error);
+      }
+    );
+  }
+  
+  updateTypeFilter(typeId: string): void {
     this.filter = {
       ...this.filter,
       type: typeId
@@ -216,7 +258,7 @@ export class SpaceFilterComponent {
     this.emitChange();
   }
   
-  updateMinPrice(event: Event) {
+  updateMinPrice(event: Event): void {
     const value = +(event.target as HTMLInputElement).value;
     this.filter = {
       ...this.filter,
@@ -231,7 +273,7 @@ export class SpaceFilterComponent {
     this.emitChange();
   }
   
-  updateMaxPrice(event: Event) {
+  updateMaxPrice(event: Event): void {
     const value = +(event.target as HTMLInputElement).value;
     this.filter = {
       ...this.filter,
@@ -246,19 +288,11 @@ export class SpaceFilterComponent {
     this.emitChange();
   }
   
-  updateCapacityFilter(capacity: number) {
-    this.filter = {
-      ...this.filter,
-      capacity
-    };
-    this.emitChange();
-  }
-  
   isFeatureSelected(featureId: string): boolean {
     return this.filter.features?.includes(featureId) || false;
   }
   
-  toggleFeature(featureId: string) {
+  toggleFeature(featureId: string): void {
     const features = [...(this.filter.features || [])];
     
     if (this.isFeatureSelected(featureId)) {
@@ -280,7 +314,7 @@ export class SpaceFilterComponent {
     this.emitChange();
   }
   
-  toggleAvailableOnly() {
+  toggleAvailableOnly(): void {
     this.filter = {
       ...this.filter,
       availableOnly: !this.filter.availableOnly
@@ -288,19 +322,21 @@ export class SpaceFilterComponent {
     this.emitChange();
   }
   
-  resetFilters() {
+  resetFilters(): void {
     this.filter = {
       availableOnly: true,
       features: []
     };
     this.emitChange();
+    
+    this.notificationService.showInfo('Les filtres ont été réinitialisés');
   }
   
-  applyFilters() {
+  applyFilters(): void {
     this.emitChange();
   }
   
-  private emitChange() {
+  private emitChange(): void {
     this.filterChange.emit(this.filter);
   }
 }
