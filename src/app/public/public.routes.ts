@@ -15,6 +15,10 @@ export const PUBLIC_ROUTES: Routes = [
     loadComponent: () => import('./spaces/spaces.component').then(m => m.SpacesComponent)
   },
   {
+    path: 'spaces/:id',
+    loadComponent: () => import('./spaces/space-detail/space-detail.component').then(m => m.SpaceDetailComponent)
+  },
+  {
     path: 'booking',
     children: [
       {
