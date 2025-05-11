@@ -1,207 +1,322 @@
-// src/app/core/services/space.service.ts
-
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, of } from 'rxjs';
-import { delay, map } from 'rxjs/operators';
-import { v4 as uuidv4 } from 'uuid';
-import { SPACES } from '../../../mocks/spaces.mock';
+import { delay, map, tap } from 'rxjs/operators';
 import { Space, SpaceType, RoomSpace, DiningSpace, EventSpace } from '../interfaces/space.interface';
-import { Booking, BookingStatus, PaymentStatus } from '../interfaces/booking.interface';
+import { NotificationService } from './notification.service';
+import { LocalStorageService } from './local-storage.service';
+
+// Import mock data
+import {
+  roomTypeA,
+  roomTypeB,
+  roomTypeC,
+  roomTypeD,
+  roomTypeP,
+  mainRestaurant,
+  terraceRDC,
+  terraceFirstFloor,
+  meetingRoom1,
+  meetingRoom2,
+  conferenceRoom,
+  weddingHall,
+  exteriorSpace,
+  parkingRDC,
+  swimmingPool,
+  firstFloorHall,
+  kidsArea,
+  SPACES
+} from '../../../mocks/spaces.mock';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SpaceService {
   private spaces: Space[] = SPACES;
-  private bookings: Booking[] = [];
-  
-  // BehaviorSubject pour maintenir l'état des espaces et des réservations
   private spacesSubject = new BehaviorSubject<Space[]>(this.spaces);
-  private bookingsSubject = new BehaviorSubject<Booking[]>(this.bookings);
+  private readonly CACHE_KEY = 'spaces_cache';
+  private readonly CACHE_DURATION = 3600; // 1 hour in seconds
 
-  constructor() {
-    // Charger les réservations mockées initiales
-    this.initializeMockBookings();
+  constructor(
+    private notificationService: NotificationService,
+    private localStorageService: LocalStorageService
+  ) {
+    this.initializeData();
   }
 
-  // Obtenir tous les espaces
+  /**
+   * Initialize data from cache or mock data
+   */
+  private initializeData(): void {
+    const cachedData = this.localStorageService.get<Space[]>(this.CACHE_KEY);
+    
+    if (cachedData) {
+      this.spaces = cachedData;
+    } else {
+      this.spaces = SPACES;
+      // Cache the data
+      this.localStorageService.set(this.CACHE_KEY, this.spaces, this.CACHE_DURATION);
+    }
+    
+    this.spacesSubject.next(this.spaces);
+  }
+
+  /**
+   * Get all spaces
+   */
   getAllSpaces(): Observable<Space[]> {
-    return this.spacesSubject.asObservable();
-  }
-
-  // Obtenir un espace par ID
-  getSpaceById(id: string): Observable<Space | undefined> {
-    return this.spacesSubject.pipe(
-      map(spaces => spaces.find(space => space.id === id))
-    );
-  }
-
-  // Obtenir les espaces par type
-  getSpacesByType(type: SpaceType): Observable<Space[]> {
-    return this.spacesSubject.pipe(
-      map(spaces => spaces.filter(space => space.type === type))
-    );
-  }
-
-  // Vérifier la disponibilité d'un espace
-  checkAvailability(
-    spaceId: string,
-    checkIn: Date,
-    checkOut: Date
-  ): Observable<boolean> {
-    // Simuler un délai de vérification
-    return of(true).pipe(
-      delay(1000),
-      map(() => {
-        const existingBookings = this.bookings.filter(
-          booking => 
-            booking.spaceId === spaceId &&
-            booking.status !== BookingStatus.CANCELLED &&
-            ((new Date(booking.checkIn) <= checkOut && new Date(booking.checkOut) >= checkIn))
-        );
-        return existingBookings.length === 0;
+    return this.spacesSubject.asObservable().pipe(
+      delay(500), // Small delay to simulate network
+      tap(spaces => {
+        if (!spaces || spaces.length === 0) {
+          console.warn('No spaces found');
+        }
       })
     );
   }
 
-  // Créer une nouvelle réservation
-  createBooking(bookingData: Partial<Booking>): Observable<Booking> {
-    // Générer un ID unique et un code de confirmation
-    const confirmationCode = 'REX' + Math.floor(10000 + Math.random() * 90000);
-    
-    const newBooking: Booking = {
-      id: uuidv4(),
-      ...bookingData,
-      status: BookingStatus.PENDING,
-      paymentStatus: PaymentStatus.PENDING,
-      createdAt: new Date(),
-      confirmationCode
-    } as Booking;
-
-    // Ajouter la réservation à la liste
-    this.bookings = [...this.bookings, newBooking];
-    this.bookingsSubject.next(this.bookings);
-
-    // Simuler un délai de traitement
-    return of(newBooking).pipe(delay(1500));
-  }
-
-  // Obtenir une réservation par code de confirmation
-  getBookingByConfirmationCode(code: string): Observable<Booking | undefined> {
-    return this.bookingsSubject.pipe(
-      map(bookings => bookings.find(booking => booking.confirmationCode === code))
+  /**
+   * Get a space by ID
+   */
+  getSpaceById(id: string): Observable<Space | undefined> {
+    return this.spacesSubject.pipe(
+      map(spaces => {
+        const space = spaces.find(space => space.id === id);
+        if (!space) {
+          console.warn(`Space with id ${id} not found`);
+        }
+        return space;
+      }),
+      delay(500)
     );
   }
 
-  // Obtenir les réservations d'un client par email
-  getBookingsByEmail(email: string): Observable<Booking[]> {
-    return this.bookingsSubject.pipe(
-      map(bookings => bookings.filter(booking => booking.guestInfo.email === email))
+  /**
+   * Get spaces by type
+   */
+  getSpacesByType(type: SpaceType): Observable<Space[]> {
+    return this.spacesSubject.pipe(
+      map(spaces => spaces.filter(space => space.type === type)),
+      delay(500)
     );
   }
 
-  // Mettre à jour le statut d'une réservation (pour l'admin)
-  updateBookingStatus(
-    bookingId: string, 
-    status: BookingStatus
-  ): Observable<Booking | undefined> {
-    const bookingIndex = this.bookings.findIndex(b => b.id === bookingId);
-    if (bookingIndex === -1) return of(undefined);
-
-    const updatedBooking = {
-      ...this.bookings[bookingIndex],
-      status
-    };
-
-    this.bookings = [
-      ...this.bookings.slice(0, bookingIndex),
-      updatedBooking,
-      ...this.bookings.slice(bookingIndex + 1)
-    ];
-
-    this.bookingsSubject.next(this.bookings);
-    return of(updatedBooking).pipe(delay(1000));
+  /**
+   * Get featured spaces
+   */
+  getFeaturedSpaces(limit: number = 3): Observable<Space[]> {
+    return this.spacesSubject.pipe(
+      map(spaces => {
+        // Get a mix of different types of spaces
+        const rooms = spaces.filter(space => space.type === SpaceType.ROOM).slice(0, 2);
+        const others = spaces.filter(space => space.type !== SpaceType.ROOM).slice(0, 1);
+        return [...rooms, ...others].slice(0, limit);
+      }),
+      delay(500)
+    );
   }
 
-  // Rechercher des espaces avec filtres
+  /**
+   * Search spaces with filters
+   */
   searchSpaces(filters: {
     type?: SpaceType;
     minPrice?: number;
     maxPrice?: number;
     capacity?: number;
     available?: boolean;
+    features?: string[];
   }): Observable<Space[]> {
     return this.spacesSubject.pipe(
-      map(spaces => spaces.filter(space => {
-        let matches = true;
-        
+      map(spaces => {
+        let filtered = [...spaces];
+
+        // Apply type filter
         if (filters.type) {
-          matches = matches && space.type === filters.type;
+          filtered = filtered.filter(space => space.type === filters.type);
         }
-        
+
+        // Apply price filters
         if (filters.minPrice !== undefined) {
-          matches = matches && (space.price || 0) >= filters.minPrice;
+          filtered = filtered.filter(space => 
+            space.price ? space.price >= filters.minPrice! : true
+          );
         }
-        
         if (filters.maxPrice !== undefined) {
-          matches = matches && (space.price || 0) <= filters.maxPrice;
+          filtered = filtered.filter(space => 
+            space.price ? space.price <= filters.maxPrice! : true
+          );
         }
-        
+
+        // Apply capacity filter
         if (filters.capacity !== undefined) {
-          matches = matches && (space.capacity || 0) >= filters.capacity;
+          filtered = filtered.filter(space => 
+            space.capacity ? space.capacity >= filters.capacity! : true
+          );
         }
-        
+
+        // Apply availability filter
         if (filters.available !== undefined) {
-          matches = matches && space.available === filters.available;
+          filtered = filtered.filter(space => space.available === filters.available);
         }
-        
-        return matches;
-      }))
+
+        // Apply features filter
+        if (filters.features && filters.features.length > 0) {
+          filtered = filtered.filter(space => 
+            filters.features!.every(feature => 
+              space.features.some(f => 
+                f.name.toLowerCase().includes(feature.toLowerCase()) || 
+                f.icon === feature
+              )
+            )
+          );
+        }
+
+        return filtered;
+      }),
+      delay(500)
     );
   }
 
-  // Obtenir les réservations à venir
-  getUpcomingBookings(): Observable<Booking[]> {
-    const today = new Date();
-    return this.bookingsSubject.pipe(
-      map(bookings => 
-        bookings.filter(booking => 
-          new Date(booking.checkIn) >= today &&
-          booking.status !== BookingStatus.CANCELLED
-        )
+  /**
+   * Check availability for a space
+   */
+  checkAvailability(spaceId: string, checkIn: Date, checkOut: Date): Observable<boolean> {
+    return this.spacesSubject.pipe(
+      map(spaces => {
+        const space = spaces.find(s => s.id === spaceId);
+        if (!space) {
+          return false;
+        }
+
+        // For demo purposes, return true 90% of the time
+        const isAvailable = Math.random() > 0.1;
+        
+        if (!isAvailable) {
+          this.notificationService.showWarning(
+            'Cet espace n\'est pas disponible aux dates sélectionnées.',
+            'Non disponible'
+          );
+        }
+
+        return isAvailable && space.available;
+      }),
+      delay(1000)
+    );
+  }
+
+  /**
+   * Get related spaces
+   */
+  getRelatedSpaces(spaceId: string, limit: number = 3): Observable<Space[]> {
+    return this.spacesSubject.pipe(
+      map(spaces => {
+        const currentSpace = spaces.find(s => s.id === spaceId);
+        if (!currentSpace) {
+          return [];
+        }
+
+        return spaces
+          .filter(s => 
+            s.id !== spaceId && 
+            s.type === currentSpace.type
+          )
+          .slice(0, limit);
+      }),
+      delay(500)
+    );
+  }
+
+  /**
+   * Get room spaces
+   */
+  getRoomSpaces(): Observable<RoomSpace[]> {
+    return this.spacesSubject.pipe(
+      map(spaces => 
+        spaces.filter(space => 
+          space.type === SpaceType.ROOM
+        ) as RoomSpace[]
+      ),
+      delay(500)
+    );
+  }
+
+  /**
+   * Get dining spaces
+   */
+  getDiningSpaces(): Observable<DiningSpace[]> {
+    return this.spacesSubject.pipe(
+      map(spaces => 
+        spaces.filter(space => 
+          space.type === SpaceType.RESTAURANT || 
+          space.type === SpaceType.BAR
+        ) as DiningSpace[]
+      ),
+      delay(500)
+    );
+  }
+
+  /**
+   * Get event spaces
+   */
+  getEventSpaces(): Observable<EventSpace[]> {
+    return this.spacesSubject.pipe(
+      map(spaces => 
+        spaces.filter(space => 
+          space.type === SpaceType.EVENT_SPACE
+        ) as EventSpace[]
+      ),
+      delay(500)
+    );
+  }
+
+  /**
+   * Update space availability
+   */
+  updateSpaceAvailability(spaceId: string, available: boolean): Observable<boolean> {
+    const spaceIndex = this.spaces.findIndex(s => s.id === spaceId);
+    if (spaceIndex === -1) {
+      return of(false);
+    }
+
+    this.spaces[spaceIndex] = {
+      ...this.spaces[spaceIndex],
+      available
+    };
+
+    this.spacesSubject.next(this.spaces);
+    this.localStorageService.set(this.CACHE_KEY, this.spaces, this.CACHE_DURATION);
+
+    return of(true).pipe(delay(500));
+  }
+
+  /**
+   * Get available space count by type
+   */
+  getAvailableSpaceCount(type: SpaceType): Observable<number> {
+    return this.spacesSubject.pipe(
+      map(spaces => 
+        spaces.filter(space => 
+          space.type === type && 
+          space.available
+        ).length
       )
     );
   }
 
-  // Initialiser des réservations mockées
-  private initializeMockBookings() {
-    // Ajouter quelques réservations de test
-    this.bookings = [
-      {
-        id: uuidv4(),
-        guestInfo: {
-          firstName: 'Jean',
-          lastName: 'Dupont',
-          email: 'jean.dupont@example.com',
-          phone: '+33612345678'
-        },
-        spaceId: 'chambre-classique',
-        spaceType: SpaceType.ROOM,
-        checkIn: new Date('2025-05-15'),
-        checkOut: new Date('2025-05-18'),
-        guests: {
-          adults: 2,
-          children: 0
-        },
-        totalPrice: 450,
-        status: BookingStatus.CONFIRMED,
-        paymentStatus: PaymentStatus.PENDING,
-        createdAt: new Date('2025-04-01'),
-        confirmationCode: 'REX12345'
-      },
-      // Ajouter d'autres réservations mockées si nécessaire
-    ];
-    
-    this.bookingsSubject.next(this.bookings);
+  /**
+   * Clear cache
+   */
+  clearCache(): void {
+    this.localStorageService.remove(this.CACHE_KEY);
+    this.initializeData();
+  }
+
+  /**
+   * Refresh data
+   */
+  refresh(): void {
+    this.clearCache();
+    this.initializeData();
+    this.notificationService.showSuccess('Données actualisées avec succès');
   }
 }

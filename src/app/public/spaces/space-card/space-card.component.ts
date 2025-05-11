@@ -1,7 +1,7 @@
 // src/app/public/spaces/space-card/space-card.component.ts
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { SpaceService } from '../../../core/services/space.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { LocalStorageService } from '../../../core/services/local-storage.service';
@@ -154,7 +154,8 @@ export class SpaceCardComponent implements OnInit {
     private spaceService: SpaceService,
     private bookingService: BookingService,
     private localStorageService: LocalStorageService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private router: Router
   ) {}
   
   ngOnInit(): void {
@@ -173,10 +174,18 @@ export class SpaceCardComponent implements OnInit {
   
   onCardClick(): void {
     if (this.available) {
+      // Emit the event for any parent components that need to know
       this.cardClick.emit(this.id);
       
-      // Enregistrer dans l'historique de navigation local
+      // Save to view history
       this.saveToViewHistory();
+      
+      // Navigate to detail view
+      if (this.detailPath) {
+        this.router.navigate([this.detailPath]);
+      } else if (this.id) {
+        this.router.navigate(['/spaces', this.id]);
+      }
     }
   }
   

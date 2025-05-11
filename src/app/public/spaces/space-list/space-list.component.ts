@@ -11,6 +11,7 @@ import { Observable, of } from 'rxjs';
 import { catchError, finalize, map } from 'rxjs/operators';
 import { SpaceFilterComponent, SpaceFilter } from '../space-filter/space-filter.component';
 import { LoaderComponent } from '../../../shared/components/ui/loader/loader.component';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-space-list',
@@ -164,12 +165,12 @@ export class SpaceListComponent implements OnInit {
     features: []
   };
   
-  typeFilterOptions: { id: string; label: string; count: number }[] = [
+  typeFilterOptions = [
     { id: '', label: 'Tous', count: 0 },
-    { id: 'Chambre', label: 'Chambres', count: 0 },
-    { id: 'Suite', label: 'Suites', count: 0 },
-    { id: 'Restaurant', label: 'Restaurants', count: 0 },
-    { id: 'Événementiel', label: 'Événementiel', count: 0 }
+    { id: SpaceType.ROOM, label: 'Chambres', count: 0 },
+    { id: SpaceType.ROOM + '_SUITE', label: 'Suites', count: 0 },
+    { id: SpaceType.RESTAURANT, label: 'Restaurants', count: 0 },
+    { id: SpaceType.EVENT_SPACE, label: 'Événementiel', count: 0 }
   ];
   
   featureOptions = [
@@ -180,7 +181,10 @@ export class SpaceListComponent implements OnInit {
     { id: 'garden', label: 'Vue jardin' }
   ];
   
-  constructor(private spaceService: SpaceService) {}
+  constructor(
+    private spaceService: SpaceService,
+    private notificationService: NotificationService
+  ) {}
   
   ngOnInit(): void {
     this.loadSpaces();
@@ -201,12 +205,15 @@ export class SpaceListComponent implements OnInit {
     this.spaceService.getAllSpaces()
       .pipe(
         map(spaces => {
-          // Update the count for each type filter
+          if (spaces.length === 0) {
+            this.notificationService.showWarning('Aucun espace disponible');
+          }
           this.updateTypeFilterCounts(spaces);
           return spaces;
         }),
         catchError(error => {
           console.error('Error loading spaces:', error);
+          this.notificationService.showError('Erreur lors du chargement des espaces');
           return of([]);
         }),
         finalize(() => {
@@ -220,21 +227,30 @@ export class SpaceListComponent implements OnInit {
   }
   
   updateTypeFilterCounts(spaces: Space[]): void {
-    // Update the "All" count
+    // Mise à jour du compteur "Tous"
     this.typeFilterOptions[0].count = spaces.length;
     
-    // Update counts for each type
+    // Mise à jour des compteurs par type
     for (let i = 1; i < this.typeFilterOptions.length; i++) {
-      const typeId = this.typeFilterOptions[i].id;
-      this.typeFilterOptions[i].count = spaces.filter(space => space.type === typeId).length;
+      const option = this.typeFilterOptions[i];
+      if (option.id === SpaceType.ROOM + '_SUITE') {
+        // Comptage spécial pour les suites
+        option.count = spaces.filter(space => 
+          space.type === SpaceType.ROOM && 
+          space.name.toLowerCase().includes('suite')
+        ).length;
+      } else {
+        // Comptage normal pour les autres types
+        option.count = spaces.filter(space => space.type === option.id).length;
+      }
     }
   }
   
   onFilterChange(filter: SpaceFilter): void {
     this.activeFilter = filter;
-    this.currentPage = 1; // Reset to first page
+    this.currentPage = 1;
     this.applyFilters();
-    this.showMobileFilter = false; // Close mobile filter
+    this.showMobileFilter = false;
   }
   
   onSortChange(event: Event): void {
@@ -257,17 +273,15 @@ export class SpaceListComponent implements OnInit {
       features: []
     };
     this.applyFilters();
+    this.notificationService.showInfo('Filtres réinitialisés');
   }
   
   onSpaceCardClick(id: string): void {
-    // This would typically navigate to the space detail page
-    console.log(`Space card clicked: ${id}`);
+    // Navigation handled by router link in template
   }
   
   onSpaceButtonClick(event: { id: string; event: MouseEvent }): void {
-    // Handle button click
-    console.log(`Button clicked for space: ${event.id}`);
-    event.event.stopPropagation(); // Prevent card click
+    event.event.stopPropagation();
   }
   
   getMainImageUrl(space: Space): string {
@@ -275,95 +289,99 @@ export class SpaceListComponent implements OnInit {
       const primaryImage = space.images.find(img => img.isPrimary);
       return primaryImage ? primaryImage.url : space.images[0].url;
     }
-    // Fallback image based on type
-    return `assets/images/rooms/${space.type.toLowerCase()}-default.jpg`;
+    return `/assets/images/spaces/default-${space.type.toLowerCase()}.jpg`;
   }
   
   getBadgeForSpace(space: Space): string {
-    // Example logic to determine badge
-    if (space.type === SpaceType.ROOM && (space.price || 0) > 500) {
-      return 'LUXE';
+    if (space.type === SpaceType.ROOM) {
+      if (space.name.toLowerCase().includes('penthouse')) {
+        return 'PENTHOUSE';
+      }
+      if (space.name.toLowerCase().includes('suite')) {
+        return 'SUITE';
+      }
+      if ((space.price || 0) > 500) {
+        return 'LUXE';
+      }
     }
     return '';
   }
   
   getFeaturesList(space: Space): { name: string; icon?: string }[] {
-    return space.features.slice(0, 3); // Return just the first 3 features
+    return space.features
+      .filter(feature => feature.name && feature.name.trim().length > 0)
+      .slice(0, 3);
   }
   
   private applyFilters(): void {
-    // Start with all spaces
+    // Filtrage initial
     let result = [...this.spaces];
     
-    // Apply filters
+    // Filtre de disponibilité
     if (this.activeFilter.availableOnly) {
       result = result.filter(space => space.available);
     }
     
+    // Filtre par type
     if (this.activeFilter.type) {
-      result = result.filter(space => space.type === this.activeFilter.type);
+      if (this.activeFilter.type === SpaceType.ROOM + '_SUITE') {
+        // Cas spécial pour les suites
+        result = result.filter(space => 
+          space.type === SpaceType.ROOM && 
+          space.name.toLowerCase().includes('suite')
+        );
+      } else {
+        result = result.filter(space => space.type === this.activeFilter.type);
+      }
     }
     
+    // Filtre par caractéristiques
     if (this.activeFilter.features && this.activeFilter.features.length > 0) {
       result = result.filter(space => {
         return this.activeFilter.features!.every(featureId => {
           return space.features.some(f => 
-            f.name.toLowerCase().includes(featureId) || 
+            f.name.toLowerCase().includes(featureId.toLowerCase()) || 
             f.icon === featureId
           );
         });
       });
     }
     
-    // Apply price filters if provided
+    // Filtres de prix
     if (this.activeFilter.minPrice !== undefined) {
       result = result.filter(space => {
-        return space.price !== undefined && space.price >= (this.activeFilter.minPrice || 0);
+        return (space.price || 0) >= (this.activeFilter.minPrice || 0);
       });
     }
     
     if (this.activeFilter.maxPrice !== undefined) {
       result = result.filter(space => {
-        return space.price !== undefined && space.price <= (this.activeFilter.maxPrice || Infinity);
+        return (space.price || 0) <= (this.activeFilter.maxPrice || Infinity);
       });
     }
     
-    // Apply sorting
-    result = this.sortSpaces(result, this.sortOption);
-    
-    this.filteredSpaces = result;
+    // Tri
+    this.filteredSpaces = this.sortSpaces(result, this.sortOption);
   }
   
   private sortSpaces(spaces: Space[], sortOption: string): Space[] {
+    const sortableSpaces = [...spaces];
+    
     switch (sortOption) {
       case 'name-asc':
-        return [...spaces].sort((a, b) => a.name.localeCompare(b.name));
+        return sortableSpaces.sort((a, b) => a.name.localeCompare(b.name));
+        
       case 'name-desc':
-        return [...spaces].sort((a, b) => b.name.localeCompare(a.name));
+        return sortableSpaces.sort((a, b) => b.name.localeCompare(a.name));
+        
       case 'price-asc':
-        return [...spaces].sort((a, b) => {
-          if (a.price !== undefined && b.price !== undefined) {
-            return a.price - b.price;
-          } else if (a.price !== undefined) {
-            return -1; // Place items with price before those without
-          } else if (b.price !== undefined) {
-            return 1; // Place items with price before those without
-          }
-          return 0;
-        });
+        return sortableSpaces.sort((a, b) => (a.price || 0) - (b.price || 0));
+        
       case 'price-desc':
-        return [...spaces].sort((a, b) => {
-          if (a.price !== undefined && b.price !== undefined) {
-            return b.price - a.price;
-          } else if (a.price !== undefined) {
-            return -1; // Place items with price before those without
-          } else if (b.price !== undefined) {
-            return 1; // Place items with price before those without
-          }
-          return 0;
-        });
+        return sortableSpaces.sort((a, b) => (b.price || 0) - (a.price || 0));
+        
       default:
-        return spaces;
+        return sortableSpaces;
     }
   }
 }
