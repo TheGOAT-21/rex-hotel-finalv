@@ -1,24 +1,23 @@
 import { SpaceType, Space, RoomSpace, DiningSpace, EventSpace, Image, Feature, OpeningHours, Layout } from '../app/core/interfaces/space.interface';
-import { v4 as uuidv4 } from 'uuid';
 
 // Images communes
 const commonRoomImages: Image[] = [
-  { id: uuidv4(), url: 'assets/images/rooms/superior1.png', alt: 'Vue de la chambre', isPrimary: true },
-  { id: uuidv4(), url: 'assets/images/rooms/superior2.png', alt: 'Salle de bain' },
-  { id: uuidv4(), url: 'assets/images/rooms/superior3.png', alt: 'Détails de la chambre' }
+  { id: 'img-common-room-1', url: 'assets/images/rooms/superior1.png', alt: 'Vue de la chambre', isPrimary: true },
+  { id: 'img-common-room-2', url: 'assets/images/rooms/superior2.png', alt: 'Salle de bain' },
+  { id: 'img-common-room-3', url: 'assets/images/rooms/superior3.png', alt: 'Détails de la chambre' }
 ];
 
 const commonEventSpaceImages: Image[] = [
-  { id: uuidv4(), url: 'assets/images/event-spaces/common/hall-1.jpg', alt: 'Vue de la salle', isPrimary: true },
-  { id: uuidv4(), url: 'assets/images/event-spaces/common/setup-1.jpg', alt: 'Configuration de la salle' },
-  { id: uuidv4(), url: 'assets/images/event-spaces/common/detail-1.jpg', alt: 'Détails de la salle' }
+  { id: 'img-event-1', url: 'assets/images/event-spaces/common/hall-1.jpg', alt: 'Vue de la salle', isPrimary: true },
+  { id: 'img-event-2', url: 'assets/images/event-spaces/common/setup-1.jpg', alt: 'Configuration de la salle' },
+  { id: 'img-event-3', url: 'assets/images/event-spaces/common/detail-1.jpg', alt: 'Détails de la salle' }
 ];
 
 const restaurantImages: Image[] = [
-  { id: uuidv4(), url: 'assets/images/restaurants/restaurant.png', alt: 'Restaurant principal', isPrimary: true },
-  { id: uuidv4(), url: 'assets/images/restaurants/restaurant2.png', alt: 'Tables du restaurant' },
-  { id: uuidv4(), url: 'assets/images/restaurants/restaurant3.png', alt: 'Bar du restaurant' },
-  { id: uuidv4(), url: 'assets/images/restaurants/restaurant4.png', alt: 'Plats du restaurant' }
+  { id: 'img-resto-1', url: 'assets/images/restaurants/restaurant.png', alt: 'Restaurant principal', isPrimary: true },
+  { id: 'img-resto-2', url: 'assets/images/restaurants/restaurant2.png', alt: 'Tables du restaurant' },
+  { id: 'img-resto-3', url: 'assets/images/restaurants/restaurant3.png', alt: 'Bar du restaurant' },
+  { id: 'img-resto-4', url: 'assets/images/restaurants/restaurant4.png', alt: 'Plats du restaurant' }
 ];
 
 // Features communes
@@ -59,13 +58,13 @@ const standardLayouts: Layout[] = [
 
 // CHAMBRES
 export const roomTypeA: RoomSpace = {
-  id: uuidv4(),
+  id: 'chambre-classique',
   name: 'Chambre Type A - Classique',
   type: SpaceType.ROOM,
   description: 'Chambre classique avec lit double, offrant confort et élégance pour votre séjour à Yamoussoukro.',
   images: [
     ...commonRoomImages,
-    { id: uuidv4(), url: 'assets/images/rooms/classic-room.png', alt: 'Vue spécifique chambre type A' }
+    { id: 'img-chambre-a', url: 'assets/images/rooms/classic-room.png', alt: 'Vue spécifique chambre type A' }
   ],
   features: [
     ...roomFeatures,
@@ -82,13 +81,13 @@ export const roomTypeA: RoomSpace = {
 };
 
 export const roomTypeB: RoomSpace = {
-  id: uuidv4(),
+  id: 'chambre-superieure',
   name: 'Chambre Type B - Supérieure',
   type: SpaceType.ROOM,
   description: 'Chambre supérieure spacieuse avec lit king-size, offrant une expérience premium avec vue sur la piscine.',
   images: [
     ...commonRoomImages,
-    { id: uuidv4(), url: 'assets/images/rooms/chamb1.png', alt: 'Vue spécifique chambre type B' }
+    { id: 'img-chambre-b', url: 'assets/images/rooms/chamb1.png', alt: 'Vue spécifique chambre type B' }
   ],
   features: [
     ...roomFeatures,
@@ -106,13 +105,13 @@ export const roomTypeB: RoomSpace = {
 };
 
 export const roomTypeC: RoomSpace = {
-  id: uuidv4(),
+  id: 'suite-deluxe',
   name: 'Chambre Type C - Deluxe',
   type: SpaceType.ROOM,
   description: 'Chambre deluxe avec lit king-size et balcon privé, offrant une vue imprenable sur la ville de Yamoussoukro.',
   images: [
     ...commonRoomImages,
-    { id: uuidv4(), url: 'assets/images/rooms/deluxe1.png', alt: 'Balcon chambre type C' }
+    { id: 'img-chambre-c', url: 'assets/images/rooms/deluxe1.png', alt: 'Balcon chambre type C' }
   ],
   features: [
     ...roomFeatures,
@@ -131,13 +130,13 @@ export const roomTypeC: RoomSpace = {
 };
 
 export const roomTypeD: RoomSpace = {
-  id: uuidv4(),
+  id: 'chambre-familiale',
   name: 'Chambre Type D - Familiale',
   type: SpaceType.ROOM,
   description: 'Chambre familiale spacieuse avec un lit king-size et deux lits simples, parfaite pour les familles.',
   images: [
     ...commonRoomImages,
-    { id: uuidv4(), url: 'assets/images/rooms/superior1.png', alt: 'Espace famille chambre type D' }
+    { id: 'img-chambre-d', url: 'assets/images/rooms/superior1.png', alt: 'Espace famille chambre type D' }
   ],
   features: [
     ...roomFeatures,
@@ -155,16 +154,16 @@ export const roomTypeD: RoomSpace = {
 };
 
 export const roomTypeP: RoomSpace = {
-  id: uuidv4(),
+  id: 'penthouse',
   name: 'Chambre Type P - Penthouse',
   type: SpaceType.ROOM,
   description: 'Suite Penthouse luxueuse avec terrasse privée, offrant une vue panoramique sur Yamoussoukro et un service exclusif.',
   images: [
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse1.png', alt: 'Vue principale penthouse', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse2.png', alt: 'Chambre penthouse' },
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse3.png', alt: 'Salon penthouse' },
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse4.png', alt: 'Terrasse penthouse' },
-    { id: uuidv4(), url: 'assets/images/rooms/penthouse5.png', alt: 'Salle de bain penthouse' }
+    { id: 'img-penthouse-1', url: 'assets/images/rooms/penthouse1.png', alt: 'Vue principale penthouse', isPrimary: true },
+    { id: 'img-penthouse-2', url: 'assets/images/rooms/penthouse2.png', alt: 'Chambre penthouse' },
+    { id: 'img-penthouse-3', url: 'assets/images/rooms/penthouse3.png', alt: 'Salon penthouse' },
+    { id: 'img-penthouse-4', url: 'assets/images/rooms/penthouse4.png', alt: 'Terrasse penthouse' },
+    { id: 'img-penthouse-5', url: 'assets/images/rooms/penthouse5.png', alt: 'Salle de bain penthouse' }
   ],
   features: [
     ...roomFeatures,
@@ -186,7 +185,7 @@ export const roomTypeP: RoomSpace = {
 
 // RESTAURANTS & TERRASSES
 export const mainRestaurant: DiningSpace = {
-  id: uuidv4(),
+  id: 'restaurant-principal',
   name: 'Le Royal - Restaurant Principal',
   type: SpaceType.RESTAURANT,
   description: 'Restaurant gastronomique proposant une cuisine internationale raffinée avec des influences ivoiriennes.',
@@ -221,14 +220,14 @@ export const mainRestaurant: DiningSpace = {
 };
 
 export const terraceRDC: DiningSpace = {
-  id: uuidv4(),
+  id: 'terrasse-jardin',
   name: 'Terrasse Le Jardin - RDC',
   type: SpaceType.RESTAURANT,
   description: 'Terrasse ombragée située au rez-de-chaussée, offrant une ambiance décontractée pour les déjeuners et dîners au bord de la piscine.',
   images: [
-    { id: uuidv4(), url: 'assets/images/restaurants/restaurant.png', alt: 'Terrasse principale RDC', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/restaurants/restaurant3.png', alt: 'Vue piscine depuis terrasse RDC' },
-    { id: uuidv4(), url: 'assets/images/restaurants/restaurant2.png', alt: 'Terrasse RDC en soirée' }
+    { id: 'img-terrasse-rdc-1', url: 'assets/images/restaurants/restaurant.png', alt: 'Terrasse principale RDC', isPrimary: true },
+    { id: 'img-terrasse-rdc-2', url: 'assets/images/restaurants/restaurant3.png', alt: 'Vue piscine depuis terrasse RDC' },
+    { id: 'img-terrasse-rdc-3', url: 'assets/images/restaurants/restaurant2.png', alt: 'Terrasse RDC en soirée' }
   ],
   features: [
     { name: 'Vue sur piscine', icon: 'pool' },
@@ -258,14 +257,14 @@ export const terraceRDC: DiningSpace = {
 };
 
 export const terraceFirstFloor: DiningSpace = {
-  id: uuidv4(),
+  id: 'terrasse-panorama',
   name: 'Terrasse Panorama - 1er étage',
   type: SpaceType.RESTAURANT,
   description: 'Terrasse exclusive au premier étage offrant une vue imprenable sur la ville, parfaite pour les dîners romantiques et les soirées.',
   images: [
-    { id: uuidv4(), url: 'assets/images/dining/terrace-1st-main.jpg', alt: 'Terrasse principale 1er étage', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/dining/terrace-1st-night.jpg', alt: 'Terrasse 1er étage en soirée' },
-    { id: uuidv4(), url: 'assets/images/dining/terrace-1st-view.jpg', alt: 'Vue depuis terrasse 1er étage' }
+    { id: 'img-terrasse-1st-1', url: 'assets/images/dining/terrace-1st-main.jpg', alt: 'Terrasse principale 1er étage', isPrimary: true },
+    { id: 'img-terrasse-1st-2', url: 'assets/images/dining/terrace-1st-night.jpg', alt: 'Terrasse 1er étage en soirée' },
+    { id: 'img-terrasse-1st-3', url: 'assets/images/dining/terrace-1st-view.jpg', alt: 'Vue depuis terrasse 1er étage' }
   ],
   features: [
     { name: 'Vue panoramique', icon: 'panorama' },
@@ -297,13 +296,13 @@ export const terraceFirstFloor: DiningSpace = {
 
 // SALLES DE RÉUNION & ÉVÉNEMENTS
 export const meetingRoom1: EventSpace = {
-  id: uuidv4(),
+  id: 'salle-reunion-1',
   name: 'Salle de réunion 1 - Executive',
   type: SpaceType.EVENT_SPACE,
   description: 'Salle de réunion élégante et fonctionnelle, parfaite pour les réunions d\'affaires et petits séminaires.',
   images: [
-    { id: uuidv4(), url: 'assets/images/events/conference.png', alt: 'Salle de réunion 1', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/events/conference1.png', alt: 'Configuration salle de réunion 1' }
+    { id: 'img-meeting-1-1', url: 'assets/images/events/conference.png', alt: 'Salle de réunion 1', isPrimary: true },
+    { id: 'img-meeting-1-2', url: 'assets/images/events/conference1.png', alt: 'Configuration salle de réunion 1' }
   ],
   features: [
     ...eventSpaceFeatures,
@@ -324,13 +323,13 @@ export const meetingRoom1: EventSpace = {
 };
 
 export const meetingRoom2: EventSpace = {
-  id: uuidv4(),
+  id: 'salle-reunion-2',
   name: 'Salle de réunion 2 - Business',
   type: SpaceType.EVENT_SPACE,
   description: 'Salle de réunion moderne avec équipement audiovisuel de pointe, idéale pour les présentations et réunions professionnelles.',
   images: [
-    { id: uuidv4(), url: 'assets/images/event-spaces/meeting-2/meeting-2-main.jpg', alt: 'Salle de réunion 2', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/event-spaces/meeting-2/meeting-2-setup.jpg', alt: 'Configuration salle de réunion 2' }
+    { id: 'img-meeting-2-1', url: 'assets/images/event-spaces/meeting-2/meeting-2-main.jpg', alt: 'Salle de réunion 2', isPrimary: true },
+    { id: 'img-meeting-2-2', url: 'assets/images/event-spaces/meeting-2/meeting-2-setup.jpg', alt: 'Configuration salle de réunion 2' }
   ],
   features: [
     ...eventSpaceFeatures,
@@ -352,14 +351,14 @@ export const meetingRoom2: EventSpace = {
 };
 
 export const conferenceRoom: EventSpace = {
-  id: uuidv4(),
+  id: 'salle-conference',
   name: 'Salle de conférence',
   type: SpaceType.EVENT_SPACE,
   description: 'Grande salle de conférence polyvalente pour les séminaires, conférences et événements professionnels de grande envergure.',
   images: [
-    { id: uuidv4(), url: 'assets/images/event-spaces/conference/conference-main.jpg', alt: 'Salle de conférence', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/event-spaces/conference/conference-setup.jpg', alt: 'Configuration salle de conférence' },
-    { id: uuidv4(), url: 'assets/images/event-spaces/conference/conference-event.jpg', alt: 'Événement dans la salle de conférence' }
+    { id: 'img-conference-1', url: 'assets/images/event-spaces/conference/conference-main.jpg', alt: 'Salle de conférence', isPrimary: true },
+    { id: 'img-conference-2', url: 'assets/images/event-spaces/conference/conference-setup.jpg', alt: 'Configuration salle de conférence' },
+    { id: 'img-conference-3', url: 'assets/images/event-spaces/conference/conference-event.jpg', alt: 'Événement dans la salle de conférence' }
   ],
   features: [
     ...eventSpaceFeatures,
@@ -383,14 +382,14 @@ export const conferenceRoom: EventSpace = {
 };
 
 export const weddingHall: EventSpace = {
-  id: uuidv4(),
+  id: 'salle-mariage',
   name: 'Salle de mariage',
   type: SpaceType.EVENT_SPACE,
   description: 'Élégante salle de réception spécialement conçue pour les mariages et célébrations, avec espace de danse et configuration modulable.',
   images: [
-    { id: uuidv4(), url: 'assets/images/event-spaces/wedding/wedding-main.jpg', alt: 'Salle de mariage', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/event-spaces/wedding/wedding-setup.jpg', alt: 'Configuration salle de mariage' },
-    { id: uuidv4(), url: 'assets/images/event-spaces/wedding/wedding-event.jpg', alt: 'Mariage dans la salle' }
+    { id: 'img-wedding-1', url: 'assets/images/event-spaces/wedding/wedding-main.jpg', alt: 'Salle de mariage', isPrimary: true },
+    { id: 'img-wedding-2', url: 'assets/images/event-spaces/wedding/wedding-setup.jpg', alt: 'Configuration salle de mariage' },
+    { id: 'img-wedding-3', url: 'assets/images/event-spaces/wedding/wedding-event.jpg', alt: 'Mariage dans la salle' }
   ],
   features: [
     ...eventSpaceFeatures,
@@ -413,14 +412,14 @@ export const weddingHall: EventSpace = {
 
 // AUTRES ESPACES
 export const exteriorSpace: Space = {
-  id: uuidv4(),
+  id: 'jardins-exterieurs',
   name: 'Extérieur & Jardins',
   type: SpaceType.EVENT_SPACE,
   description: 'Magnifiques jardins aménagés offrant un cadre verdoyant et paisible, parfaits pour les événements en plein air et les moments de détente.',
   images: [
-    { id: uuidv4(), url: 'assets/images/exterior/gardens-main.jpg', alt: 'Jardins', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/exterior/pool-area.jpg', alt: 'Espace piscine' },
-    { id: uuidv4(), url: 'assets/images/exterior/lounge-area.jpg', alt: 'Espace détente extérieur' }
+    { id: 'img-exterior-1', url: 'assets/images/exterior/gardens-main.jpg', alt: 'Jardins', isPrimary: true },
+    { id: 'img-exterior-2', url: 'assets/images/exterior/pool-area.jpg', alt: 'Espace piscine' },
+    { id: 'img-exterior-3', url: 'assets/images/exterior/lounge-area.jpg', alt: 'Espace détente extérieur' }
   ],
   features: [
     { name: 'Jardins paysagers', icon: 'garden' },
@@ -435,12 +434,12 @@ export const exteriorSpace: Space = {
 };
 
 export const parkingRDC: Space = {
-  id: uuidv4(),
+  id: 'parking-rdc',
   name: 'Parking RDC',
   type: SpaceType.EVENT_SPACE,
   description: 'Parking sécurisé au rez-de-chaussée avec accès direct à la réception de l\'hôtel.',
   images: [
-    { id: uuidv4(), url: 'assets/images/facilities/parking-rdc.jpg', alt: 'Parking RDC', isPrimary: true }
+    { id: 'img-parking-1', url: 'assets/images/facilities/parking-rdc.jpg', alt: 'Parking RDC', isPrimary: true }
   ],
   features: [
     { name: 'Sécurisé 24/7', icon: 'security' },
@@ -452,14 +451,14 @@ export const parkingRDC: Space = {
 };
 
 export const swimmingPool: Space = {
-  id: uuidv4(),
+  id: 'piscine',
   name: 'Piscine',
   type: SpaceType.EVENT_SPACE,
   description: 'Magnifique piscine extérieure avec terrasse ensoleillée, transats confortables et service de bar au bord de l\'eau.',
   images: [
-    { id: uuidv4(), url: 'assets/images/facilities/pool-main.jpg', alt: 'Piscine principale', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/facilities/pool-loungers.jpg', alt: 'Transats piscine' },
-    { id: uuidv4(), url: 'assets/images/facilities/pool-bar.jpg', alt: 'Bar de la piscine' }
+    { id: 'img-pool-1', url: 'assets/images/facilities/pool-main.jpg', alt: 'Piscine principale', isPrimary: true },
+    { id: 'img-pool-2', url: 'assets/images/facilities/pool-loungers.jpg', alt: 'Transats piscine' },
+    { id: 'img-pool-3', url: 'assets/images/facilities/pool-bar.jpg', alt: 'Bar de la piscine' }
   ],
   features: [
     { name: 'Piscine chauffée', icon: 'heated-pool' },
@@ -472,13 +471,13 @@ export const swimmingPool: Space = {
 };
 
 export const firstFloorHall: Space = {
-  id: uuidv4(),
+  id: 'hall-premier-etage',
   name: 'Hall 1er Étage',
   type: SpaceType.EVENT_SPACE,
   description: 'Élégant hall au premier étage pouvant accueillir des expositions, cocktails et événements de networking.',
   images: [
-    { id: uuidv4(), url: 'assets/images/event-spaces/hall/hall-main.jpg', alt: 'Hall 1er étage', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images/event-spaces/hall/hall-event.jpg', alt: 'Événement dans le hall' }
+    { id: 'img-hall-1', url: 'assets/images/event-spaces/hall/hall-main.jpg', alt: 'Hall 1er étage', isPrimary: true },
+    { id: 'img-hall-2', url: 'assets/images/event-spaces/hall/hall-event.jpg', alt: 'Événement dans le hall' }
   ],
   features: [
     { name: 'Espace ouvert', icon: 'open-space' },
@@ -492,13 +491,13 @@ export const firstFloorHall: Space = {
 };
 
 export const kidsArea: Space = {
-  id: uuidv4(),
+  id: 'espace-enfants',
   name: 'Espace Enfant',
   type: SpaceType.EVENT_SPACE,
   description: 'Espace dédié aux enfants avec activités ludiques et éducatives, sous la supervision de personnel qualifié.',
   images: [
-    { id: uuidv4(), url: 'assets/images//kids-play.png', alt: 'Espace enfant principal', isPrimary: true },
-    { id: uuidv4(), url: 'assets/images//kids-play2.png', alt: 'Activités enfants' }
+    { id: 'img-kids-1', url: 'assets/images//kids-play.png', alt: 'Espace enfant principal', isPrimary: true },
+    { id: 'img-kids-2', url: 'assets/images//kids-play2.png', alt: 'Activités enfants' }
   ],
   features: [
     { name: 'Jeux éducatifs', icon: 'educational-games' },

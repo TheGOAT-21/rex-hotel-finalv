@@ -1,5 +1,5 @@
 // src/app/public/spaces/space-list/space-list.component.ts
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { SpaceCardComponent } from '../space-card/space-card.component';
@@ -7,7 +7,7 @@ import { PaginationComponent } from '../../../shared/components/ui/pagination/pa
 import { SectionTitleComponent } from '../../../shared/components/content/section-title/section-title.component';
 import { SpaceType, Space, Image } from '../../../core/interfaces/space.interface';
 import { SpaceService } from '../../../core/services/space.service';
-import { Observable, of } from 'rxjs';
+import { Observable, of, Subscription } from 'rxjs';
 import { catchError, finalize, map } from 'rxjs/operators';
 import { SpaceFilterComponent, SpaceFilter } from '../space-filter/space-filter.component';
 import { LoaderComponent } from '../../../shared/components/ui/loader/loader.component';
@@ -71,7 +71,7 @@ import { NotificationService } from '../../../core/services/notification.service
           </div>
 
           <!-- Results Count and Sort Options -->
-          <div class="flex justify-between items-center mb-6">
+          <div *ngIf="!isLoading" class="flex justify-between items-center mb-6">
             <p class="text-text">
               <span class="font-semibold">{{ filteredSpaces.length }}</span> espaces trouvés
             </p>
@@ -113,17 +113,34 @@ import { NotificationService } from '../../../core/services/notification.service
             </button>
           </div>
           
+          <!-- Error State -->
+          <div *ngIf="!isLoading && errorMessage" class="py-12 text-center">
+            <div class="text-error mb-4">
+              <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <h3 class="text-xl font-bold text-text mb-2">Erreur de chargement</h3>
+            <p class="text-text opacity-70 mb-6">{{ errorMessage }}</p>
+            <button 
+              (click)="loadSpaces()"
+              class="bg-primary text-background font-bold uppercase px-4 py-2 rounded hover:bg-primary-hover transition-colors"
+            >
+              Réessayer
+            </button>
+          </div>
+          
           <!-- Spaces Grid -->
           <div *ngIf="!isLoading && filteredSpaces.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <app-space-card
               *ngFor="let space of paginatedSpaces"
               [id]="space.id"
               [name]="space.name"
-              [type]="space.type"
+              [type]="getSpaceTypeName(space.type)"
               [description]="space.description"
               [imageUrl]="getMainImageUrl(space)"
               [price]="space.price || 0"
-              [priceUnit]="space.currency ? space.currency + ' / nuit' : ''"
+              [priceUnit]="getPriceUnit(space)"
               [buttonText]="'Voir détails'"
               [available]="space.available"
               [badge]="getBadgeForSpace(space)"
@@ -147,18 +164,21 @@ import { NotificationService } from '../../../core/services/notification.service
     </div>
   `
 })
-export class SpaceListComponent implements OnInit {
+export class SpaceListComponent implements OnInit, OnDestroy {
   @Input() title: string = 'Nos Espaces';
   @Input() subtitle: string = 'Découvrez nos chambres, suites et espaces événementiels';
   @Input() showFilters: boolean = true;
   @Input() itemsPerPage: number = 6;
   
+  // State
   spaces: Space[] = [];
   filteredSpaces: Space[] = [];
   isLoading: boolean = true;
+  errorMessage: string = '';
   showMobileFilter: boolean = false;
   currentPage: number = 1;
   sortOption: string = 'name-asc';
+  private subscription: Subscription = new Subscription();
   
   activeFilter: SpaceFilter = {
     availableOnly: true,
@@ -190,6 +210,10 @@ export class SpaceListComponent implements OnInit {
     this.loadSpaces();
   }
   
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
+  }
+  
   get totalPages(): number {
     return Math.ceil(this.filteredSpaces.length / this.itemsPerPage);
   }
@@ -201,8 +225,9 @@ export class SpaceListComponent implements OnInit {
   
   loadSpaces(): void {
     this.isLoading = true;
+    this.errorMessage = '';
     
-    this.spaceService.getAllSpaces()
+    const spacesSubscription = this.spaceService.getAllSpaces()
       .pipe(
         map(spaces => {
           if (spaces.length === 0) {
@@ -213,6 +238,7 @@ export class SpaceListComponent implements OnInit {
         }),
         catchError(error => {
           console.error('Error loading spaces:', error);
+          this.errorMessage = 'Erreur lors du chargement des espaces. Veuillez réessayer.';
           this.notificationService.showError('Erreur lors du chargement des espaces');
           return of([]);
         }),
@@ -224,6 +250,8 @@ export class SpaceListComponent implements OnInit {
         this.spaces = spaces;
         this.applyFilters();
       });
+    
+    this.subscription.add(spacesSubscription);
   }
   
   updateTypeFilterCounts(spaces: Space[]): void {
@@ -278,10 +306,27 @@ export class SpaceListComponent implements OnInit {
   
   onSpaceCardClick(id: string): void {
     // Navigation handled by router link in template
+    console.log(`Space card clicked: ${id}`);
   }
   
   onSpaceButtonClick(event: { id: string; event: MouseEvent }): void {
     event.event.stopPropagation();
+    console.log(`Button clicked for space: ${event.id}`);
+  }
+  
+  getSpaceTypeName(type: SpaceType): string {
+    switch (type) {
+      case SpaceType.ROOM:
+        return 'Chambre';
+      case SpaceType.RESTAURANT:
+        return 'Restaurant';
+      case SpaceType.BAR:
+        return 'Bar';
+      case SpaceType.EVENT_SPACE:
+        return 'Espace événementiel';
+      default:
+        return 'Espace';
+    }
   }
   
   getMainImageUrl(space: Space): string {
@@ -289,7 +334,22 @@ export class SpaceListComponent implements OnInit {
       const primaryImage = space.images.find(img => img.isPrimary);
       return primaryImage ? primaryImage.url : space.images[0].url;
     }
-    return `/assets/images/spaces/default-${space.type.toLowerCase()}.jpg`;
+    return `assets/images/spaces/default-${space.type.toLowerCase()}.jpg`;
+  }
+  
+  getPriceUnit(space: Space): string {
+    if (!space.price) return '';
+    
+    const currency = space.currency || 'FCFA';
+    
+    switch (space.type) {
+      case SpaceType.ROOM:
+        return `${currency} / nuit`;
+      case SpaceType.EVENT_SPACE:
+        return `${currency} / jour`;
+      default:
+        return currency;
+    }
   }
   
   getBadgeForSpace(space: Space): string {
@@ -308,7 +368,7 @@ export class SpaceListComponent implements OnInit {
   }
   
   getFeaturesList(space: Space): { name: string; icon?: string }[] {
-    return space.features
+    return space.features  // Si space.features est undefined, erreur!
       .filter(feature => feature.name && feature.name.trim().length > 0)
       .slice(0, 3);
   }

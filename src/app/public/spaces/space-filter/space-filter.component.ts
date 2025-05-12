@@ -1,11 +1,13 @@
 // src/app/public/spaces/space-filter/space-filter.component.ts
 
-import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SpaceService } from '../../../core/services/space.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { SpaceType } from '../../../core/interfaces/space.interface';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 export interface FilterOption {
   id: string;
@@ -161,7 +163,7 @@ export interface SpaceFilter {
     </div>
   `
 })
-export class SpaceFilterComponent implements OnInit {
+export class SpaceFilterComponent implements OnInit, OnDestroy {
   @Input() showPriceFilter = true;
   @Input() showCapacityFilter = true;
   @Input() showAvailabilityFilter = true;
@@ -173,11 +175,13 @@ export class SpaceFilterComponent implements OnInit {
   @Input() minPriceOption = 0;
   
   @Input() filter: SpaceFilter = {
-    availableOnly: true,
+    availableOnly: false, // Changé pour false par défaut
     features: []
   };
   
   @Output() filterChange = new EventEmitter<SpaceFilter>();
+  
+  private destroy$ = new Subject<void>();
   
   constructor(
     private spaceService: SpaceService,
@@ -188,66 +192,96 @@ export class SpaceFilterComponent implements OnInit {
     this.loadFilterOptions();
   }
   
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+  
   get showResetButton(): boolean {
     return !!(this.filter.type || 
               this.filter.minPrice || 
               this.filter.maxPrice || 
-              (this.filter.features && this.filter.features.length));
+              (this.filter.features && this.filter.features.length) ||
+              this.filter.availableOnly);
   }
   
   private loadFilterOptions(): void {
     // Charger les options de type d'espace
-    this.spaceService.getAllSpaces().subscribe(
-      spaces => {
-        // Compter les espaces par type
-        const typeCounts = new Map<string, number>();
-        spaces.forEach(space => {
-          const count = typeCounts.get(space.type) || 0;
-          typeCounts.set(space.type, count + 1);
-        });
-        
-        // Créer les options de type
-        this.typeOptions = [
-          { id: '', label: 'Tous les types' },
-          { id: SpaceType.ROOM, label: 'Chambres', count: typeCounts.get(SpaceType.ROOM) || 0 },
-          { id: SpaceType.RESTAURANT, label: 'Restaurants', count: typeCounts.get(SpaceType.RESTAURANT) || 0 },
-          { id: SpaceType.BAR, label: 'Bars', count: typeCounts.get(SpaceType.BAR) || 0 },
-          { id: SpaceType.EVENT_SPACE, label: 'Salles événementielles', count: typeCounts.get(SpaceType.EVENT_SPACE) || 0 }
-        ];
-        
-        // Trouver les min/max prix
-        const prices = spaces
-          .map(space => space.price)
-          .filter(price => typeof price === 'number') as number[];
-        
-        if (prices.length > 0) {
-          this.minPriceOption = Math.min(...prices);
-          this.maxPriceOption = Math.max(...prices);
-        }
-        
-        // Créer les options de caractéristiques
-        const features = new Map<string, number>();
-        spaces.forEach(space => {
-          space.features.forEach(feature => {
-            const count = features.get(feature.name) || 0;
-            features.set(feature.name, count + 1);
+    this.spaceService.getAllSpaces()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(
+        spaces => {
+          console.log('Options de filtre chargées - espaces:', spaces.length);
+          // Compter les espaces par type
+          const typeCounts = new Map<string, number>();
+          spaces.forEach(space => {
+            const count = typeCounts.get(space.type) || 0;
+            typeCounts.set(space.type, count + 1);
           });
-        });
-        
-        this.featureOptions = Array.from(features.entries()).map(([name, count]) => ({
-          id: name.toLowerCase(),
-          label: name,
-          count
-        }));
-      },
-      error => {
-        this.notificationService.showError(
-          'Erreur lors du chargement des options de filtrage',
-          'Erreur'
-        );
-        console.error('Erreur lors du chargement des espaces :', error);
-      }
-    );
+          
+          // Créer les options de type
+          this.typeOptions = [
+            { id: '', label: 'Tous les types', count: spaces.length },
+            { id: SpaceType.ROOM, label: 'Chambres', count: typeCounts.get(SpaceType.ROOM) || 0 },
+            { id: SpaceType.RESTAURANT, label: 'Restaurants', count: typeCounts.get(SpaceType.RESTAURANT) || 0 },
+            { id: SpaceType.BAR, label: 'Bars', count: typeCounts.get(SpaceType.BAR) || 0 },
+            { id: SpaceType.EVENT_SPACE, label: 'Salles événementielles', count: typeCounts.get(SpaceType.EVENT_SPACE) || 0 }
+          ];
+          
+          // Ajout d'une option pour les suites (sous-type de chambre)
+          const suitesCount = spaces.filter(space => 
+            space.type === SpaceType.ROOM && 
+            space.name.toLowerCase().includes('suite')
+          ).length;
+          
+          // Ajout explicite de l'option 'suite'
+          const suiteOption = { id: 'suite', label: 'Suites', count: suitesCount };
+          // Assurez-vous que cette option n'existe pas déjà avant de l'ajouter
+          if (!this.typeOptions.some(opt => opt.id === 'suite')) {
+            this.typeOptions.splice(2, 0, suiteOption); // Insérer après Chambres
+          }
+          
+          // Trouver les min/max prix
+          const prices = spaces
+            .map(space => space.price)
+            .filter(price => typeof price === 'number' && price > 0) as number[];
+          
+          if (prices.length > 0) {
+            this.minPriceOption = Math.floor(Math.min(...prices));
+            this.maxPriceOption = Math.ceil(Math.max(...prices));
+            console.log(`Plage de prix: ${this.minPriceOption} - ${this.maxPriceOption}`);
+          }
+          
+          // Créer les options de caractéristiques
+          const features = new Map<string, number>();
+          spaces.forEach(space => {
+            if (space.features && Array.isArray(space.features)) {
+              space.features.forEach(feature => {
+                if (feature && feature.name) {
+                  const count = features.get(feature.name) || 0;
+                  features.set(feature.name, count + 1);
+                }
+              });
+            }
+          });
+          
+          // Mettre à jour les options de fonctionnalités uniquement si elles ont été définies
+          if (features.size > 0 && (!this.featureOptions || this.featureOptions.length === 0)) {
+            this.featureOptions = Array.from(features.entries()).map(([name, count]) => ({
+              id: name.toLowerCase(),
+              label: name,
+              count
+            }));
+          }
+        },
+        error => {
+          this.notificationService.showError(
+            'Erreur lors du chargement des options de filtrage',
+            'Erreur'
+          );
+          console.error('Erreur lors du chargement des espaces :', error);
+        }
+      );
   }
   
   updateTypeFilter(typeId: string): void {
@@ -289,7 +323,10 @@ export class SpaceFilterComponent implements OnInit {
   }
   
   isFeatureSelected(featureId: string): boolean {
-    return this.filter.features?.includes(featureId) || false;
+    if (!this.filter.features) {
+      return false;
+    }
+    return this.filter.features.includes(featureId);
   }
   
   toggleFeature(featureId: string): void {
@@ -324,7 +361,7 @@ export class SpaceFilterComponent implements OnInit {
   
   resetFilters(): void {
     this.filter = {
-      availableOnly: true,
+      availableOnly: false, // Changé à false pour montrer tous les espaces
       features: []
     };
     this.emitChange();
@@ -337,6 +374,7 @@ export class SpaceFilterComponent implements OnInit {
   }
   
   private emitChange(): void {
+    console.log('Filtres appliqués:', this.filter);
     this.filterChange.emit(this.filter);
   }
 }

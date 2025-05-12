@@ -1,5 +1,5 @@
 // src/app/public/spaces/spaces.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { SpaceCardComponent } from './space-card/space-card.component';
@@ -8,20 +8,14 @@ import { SectionTitleComponent } from '../../shared/components/content/section-t
 import { PaginationComponent } from '../../shared/components/ui/pagination/pagination.component';
 import { LoaderComponent } from '../../shared/components/ui/loader/loader.component';
 
-interface Space {
-  id: string;
-  name: string;
-  type: string;
-  description: string;
-  imageUrl: string;
-  price: number | string;
-  priceUnit: string;
-  available: boolean;
-  features: { name: string; icon?: string }[];
-  badge?: string;
-}
+// Import du service et des interfaces
+import { SpaceService } from '../../core/services/space.service';
+import { Space, SpaceType, Image } from '../../core/interfaces/space.interface';
+import { NotificationService } from '../../core/services/notification.service';
+import { finalize, catchError, takeUntil } from 'rxjs/operators';
+import { of, Subject } from 'rxjs';
 
-interface SpaceFilter {
+export interface SpaceFilter {
   type?: string;
   capacity?: number;
   minPrice?: number;
@@ -105,8 +99,13 @@ interface SpaceFilter {
               </div>
             </div>
             
+            <!-- Loading state -->
+            <div *ngIf="isLoading" class="py-12 flex justify-center">
+              <app-loader text="Chargement des espaces..."></app-loader>
+            </div>
+            
             <!-- Results Count -->
-            <div class="flex justify-between items-center mb-6">
+            <div *ngIf="!isLoading" class="flex justify-between items-center mb-6">
               <p class="text-text">
                 <span class="font-semibold">{{ filteredSpaces.length }}</span> espaces trouvés
               </p>
@@ -126,29 +125,66 @@ interface SpaceFilter {
               </div>
             </div>
             
+            <!-- Debug Information -->
+            <div class="bg-yellow-100 p-4 mb-6 rounded text-sm" *ngIf="debugMode">
+              <div><strong>Debug Info:</strong></div>
+              <div>Loading: {{ isLoading }}</div>
+              <div>Filtered Spaces: {{ filteredSpaces.length }}</div>
+              <div>Current Page: {{ currentPage }}</div>
+              <div>Paginated Spaces: {{ paginatedSpaces.length }}</div>
+              <div>Total Pages: {{ totalPages }}</div>
+              <div>Items per Page: {{ itemsPerPage }}</div>
+              <div *ngIf="paginatedSpaces.length > 0">First Space: {{ paginatedSpaces[0].name }}</div>
+              <button (click)="forcePaginationRefresh()" class="bg-blue-500 text-white px-2 py-1 rounded mt-2">
+                Force Refresh
+              </button>
+            </div>
+            
             <!-- Spaces Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+            <div *ngIf="!isLoading && filteredSpaces.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
               <app-space-card
-                *ngFor="let space of paginatedSpaces"
+                *ngFor="let space of paginatedSpaces; trackBy: trackBySpaceId"
                 [id]="space.id"
                 [name]="space.name"
-                [type]="space.type"
+                [type]="getSpaceTypeName(space.type)"
                 [description]="space.description"
-                [imageUrl]="space.imageUrl"
-                [price]="space.price"
-                [priceUnit]="space.priceUnit"
+                [imageUrl]="getMainImageUrl(space)"
+                [price]="space.price || 0"
+                [priceUnit]="getPriceUnit(space)"
                 buttonText="Voir détails"
                 [available]="space.available"
-                [badge]="space.badge || ''"
-                [features]="space.features"
+                [badge]="getBadgeForSpace(space)"
+                [features]="getFeaturesList(space)"
                 [detailPath]="'/spaces/' + space.id"
                 (cardClick)="onSpaceCardClick(space.id)"
                 (buttonClick)="onSpaceButtonClick($event)"
               ></app-space-card>
             </div>
             
+            <!-- Fallback Display (si les cartes ne s'affichent pas) -->
+            <div *ngIf="!isLoading && filteredSpaces.length > 0 && paginatedSpaces.length === 0" class="bg-red-100 p-4 rounded mb-6">
+              <p class="font-bold">Problème d'affichage détecté</p>
+              <p>Des espaces sont disponibles mais ne s'affichent pas correctement.</p>
+            </div>
+            
+            <!-- Basic Text Fallback -->
+            <div *ngIf="!isLoading && filteredSpaces.length > 0 && showTextFallback" class="mb-6">
+              <div class="mb-2 font-bold">Liste des espaces (affichage de secours):</div>
+              <ul class="list-disc pl-5">
+                <li *ngFor="let space of paginatedSpaces" class="mb-2">
+                  <strong>{{ space.name }}</strong> ({{ getSpaceTypeName(space.type) }})
+                  <br>
+                  <span class="text-sm">{{ space.description }}</span>
+                  <br>
+                  <span *ngIf="space.price" class="text-primary font-bold">
+                    {{ space.price }} {{ space.currency || 'FCFA' }}
+                  </span>
+                </li>
+              </ul>
+            </div>
+            
             <!-- Empty State -->
-            <div *ngIf="filteredSpaces.length === 0" class="py-12 text-center">
+            <div *ngIf="!isLoading && filteredSpaces.length === 0" class="py-12 text-center">
               <div class="text-primary opacity-30 mb-4">
                 <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -164,13 +200,42 @@ interface SpaceFilter {
               </button>
             </div>
             
+            <!-- Error State -->
+            <div *ngIf="errorMessage" class="py-12 text-center">
+              <div class="text-error mb-4">
+                <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <h3 class="text-xl font-bold text-text mb-2">Erreur de chargement</h3>
+              <p class="text-text opacity-70 mb-6">{{ errorMessage }}</p>
+              <button 
+                (click)="loadSpaces()"
+                class="bg-primary text-background font-bold uppercase px-4 py-2 rounded hover:bg-primary-hover transition-colors"
+              >
+                Réessayer
+              </button>
+            </div>
+            
             <!-- Pagination -->
-            <div *ngIf="filteredSpaces.length > 0" class="mt-12">
+            <div *ngIf="!isLoading && filteredSpaces.length > itemsPerPage" class="mt-12">
               <app-pagination
                 [currentPage]="currentPage"
                 [totalPages]="totalPages"
                 (pageChange)="onPageChange($event)"
               ></app-pagination>
+            </div>
+            
+            <!-- Debug Toggle Button -->
+            <div class="fixed bottom-4 right-4 z-50">
+              <button 
+                (click)="toggleDebugMode()" 
+                class="bg-gray-800 text-white p-2 rounded-full shadow-lg"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -178,162 +243,36 @@ interface SpaceFilter {
     </div>
   `
 })
-export class SpacesComponent implements OnInit {
-  // Spaces data that would typically come from a service
-  spaces: Space[] = [
-    {
-      id: 'chambre-classique',
-      name: 'Chambre Classique',
-      type: 'Chambre',
-      description: 'Une chambre élégante avec lit double et toutes les commodités essentielles pour un séjour confortable.',
-      imageUrl: 'assets/images/rooms/classic-room.png',
-      price: 150,
-      priceUnit: 'FCFA / nuit',
-      available: true,
-      features: [
-        { name: 'Wifi gratuit', icon: 'wifi' },
-        { name: 'Climatisation', icon: 'air-conditioner' },
-        { name: 'TV écran plat', icon: 'tv' }
-      ]
-    },
-    {
-      id: 'chambre-superieure',
-      name: 'Chambre Supérieure',
-      type: 'Chambre',
-      description: 'Une chambre spacieuse avec lit king-size et vue sur les jardins luxuriants de l\'hôtel.',
-      imageUrl: 'assets/images/rooms/superior-room.jpg',
-      price: 220,
-      priceUnit: 'FCFA / nuit',
-      available: true,
-      features: [
-        { name: 'Vue jardin', icon: 'garden' },
-        { name: 'Minibar', icon: 'fridge' },
-        { name: 'Coffre-fort', icon: 'safe' }
-      ]
-    },
-    {
-      id: 'suite-deluxe',
-      name: 'Suite Deluxe',
-      type: 'Suite',
-      description: 'Une suite avec balcon privé offrant une vue imprenable sur la ville et un espace salon séparé.',
-      imageUrl: 'assets/images/rooms/deluxe1.png',
-      price: 280,
-      priceUnit: 'FCFA / nuit',
-      available: true,
-      features: [
-        { name: 'Balcon privé', icon: 'balcony' },
-        { name: 'Salon séparé', icon: 'sofa' },
-        { name: 'Douche à effet pluie', icon: 'shower' }
-      ]
-    },
-    {
-      id: 'chambre-familiale',
-      name: 'Chambre Familiale',
-      type: 'Chambre',
-      description: 'Chambre spacieuse avec un lit king-size et deux lits simples, parfaite pour les familles.',
-      imageUrl: 'assets/images/rooms/family-room.jpg',
-      price: 320,
-      priceUnit: 'FCFA / nuit',
-      available: true,
-      features: [
-        { name: 'Espace famille', icon: 'family' },
-        { name: 'Vue jardin', icon: 'garden' },
-        { name: 'Réfrigérateur', icon: 'fridge' }
-      ]
-    },
-    {
-      id: 'penthouse',
-      name: 'Penthouse',
-      type: 'Suite Executive',
-      description: 'Notre suite exclusive au dernier étage avec terrasse privée et service de majordome.',
-      imageUrl: 'assets/images/rooms/penthouse1.png',
-      price: 750,
-      priceUnit: 'FCFA / nuit',
-      available: true,
-      badge: 'EXCLUSIF',
-      features: [
-        { name: 'Terrasse privée', icon: 'terrace' },
-        { name: 'Service majordome', icon: 'butler' },
-        { name: 'Jacuzzi privé', icon: 'jacuzzi' }
-      ]
-    },
-    {
-      id: 'restaurant-principal',
-      name: 'Le Royal - Restaurant Principal',
-      type: 'Restaurant',
-      description: 'Restaurant gastronomique proposant une cuisine internationale raffinée avec des influences ivoiriennes.',
-      imageUrl: 'assets/images/dining/restaurant-main.jpg',
-      price: '',
-      priceUnit: '',
-      available: true,
-      features: [
-        { name: 'Cuisine internationale', icon: 'global' },
-        { name: 'Vue jardin', icon: 'garden' },
-        { name: 'Bar à vins', icon: 'wine' }
-      ]
-    },
-    {
-      id: 'terrasse-jardin',
-      name: 'Terrasse Le Jardin',
-      type: 'Restaurant',
-      description: 'Terrasse ombragée située au rez-de-chaussée, offrant une ambiance décontractée pour les repas au bord de la piscine.',
-      imageUrl: 'assets/images/dining/terrace-rdc.jpg',
-      price: '',
-      priceUnit: '',
-      available: true,
-      features: [
-        { name: 'Vue piscine', icon: 'pool' },
-        { name: 'Cuisine légère', icon: 'salad' },
-        { name: 'Bar à cocktails', icon: 'cocktail' }
-      ]
-    },
-    {
-      id: 'salle-conference',
-      name: 'Salle de Conférence',
-      type: 'Événementiel',
-      description: 'Grande salle polyvalente pour les séminaires, conférences et événements professionnels.',
-      imageUrl: 'assets/images/event-spaces/conference.jpg',
-      price: 1500,
-      priceUnit: 'FCFA / jour',
-      available: true,
-      features: [
-        { name: 'Capacité 200 personnes', icon: 'people' },
-        { name: 'Équipement audiovisuel', icon: 'projector' },
-        { name: 'Service traiteur', icon: 'catering' }
-      ]
-    },
-    {
-      id: 'salle-mariage',
-      name: 'Salle de Mariage',
-      type: 'Événementiel',
-      description: 'Élégante salle de réception spécialement conçue pour les mariages et célébrations.',
-      imageUrl: 'assets/images/event-spaces/wedding.jpg',
-      price: 2000,
-      priceUnit: 'FCFA / jour',
-      available: false,
-      features: [
-        { name: 'Piste de danse', icon: 'dance-floor' },
-        { name: 'Éclairage d\'ambiance', icon: 'ambient-light' },
-        { name: 'Espace DJ', icon: 'dj-booth' }
-      ]
-    }
-  ];
+export class SpacesComponent implements OnInit, OnDestroy {
+  // State
+  spaces: Space[] = [];
+  filteredSpaces: Space[] = [];
+  isLoading = true;
+  errorMessage = '';
+  showMobileFilter = false;
+  currentPage = 1;
+  itemsPerPage = 6;
+  sortOption = 'name-asc';
+  debugMode = true; // Activer le mode débogage par défaut
+  showTextFallback = true; // Activer l'affichage de secours en texte
+  private destroy$ = new Subject<void>();
+  private _paginatedSpaces: Space[] = [];
 
   // Filter options
   typeOptions = [
-    { id: '', label: 'Tous les types' },
-    { id: 'Chambre', label: 'Chambres' },
-    { id: 'Suite', label: 'Suites' },
-    { id: 'Restaurant', label: 'Restaurants & Bars' },
-    { id: 'Événementiel', label: 'Salles événementielles' }
+    { id: '', label: 'Tous les types', count: 0 },
+    { id: SpaceType.ROOM, label: 'Chambres', count: 0 },
+    { id: 'suite', label: 'Suites', count: 0 },
+    { id: SpaceType.RESTAURANT, label: 'Restaurants', count: 0 },
+    { id: SpaceType.EVENT_SPACE, label: 'Salles événementielles', count: 0 }
   ];
   
   featureOptions = [
     { id: 'wifi', label: 'Wifi gratuit' },
-    { id: 'vue', label: 'Vue panoramique' },
-    { id: 'balcon', label: 'Balcon/Terrasse' },
-    { id: 'climatisation', label: 'Climatisation' },
-    { id: 'minibar', label: 'Minibar' }
+    { id: 'panorama', label: 'Vue panoramique' },
+    { id: 'balcony', label: 'Balcon/Terrasse' },
+    { id: 'air-conditioner', label: 'Climatisation' },
+    { id: 'fridge', label: 'Minibar' }
   ];
   
   capacityOptions = [
@@ -343,19 +282,106 @@ export class SpacesComponent implements OnInit {
     { id: '6', label: '5+ personnes' }
   ];
 
-  // State
+  // Filtres initiaux - false pour afficher tous les espaces
   activeFilter: SpaceFilter = {
-    availableOnly: true,
+    availableOnly: false,
     features: []
   };
-  filteredSpaces: Space[] = [];
-  showMobileFilter = false;
-  currentPage = 1;
-  itemsPerPage = 6;
-  sortOption = 'name-asc';
+
+  constructor(
+    private spaceService: SpaceService,
+    private notificationService: NotificationService,
+    private changeDetector: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
-    this.applyFilters();
+    this.loadSpaces();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // Helper pour Angular change detection avec trackBy
+  trackBySpaceId(index: number, space: Space): string {
+    return space.id;
+  }
+
+  toggleDebugMode(): void {
+    this.debugMode = !this.debugMode;
+  }
+
+  forcePaginationRefresh(): void {
+    this.currentPage = 1;
+    this._paginatedSpaces = [];
+    this.updatePaginatedSpaces();
+    this.changeDetector.detectChanges();
+  }
+
+// Dans la méthode loadSpaces(), modifiez la partie finalize pour s'assurer que isLoading passe à false
+
+loadSpaces(): void {
+  this.isLoading = true;
+  this.errorMessage = '';
+  
+  this.spaceService.getAllSpaces()
+    .pipe(
+      takeUntil(this.destroy$),
+      catchError(error => {
+        console.error('Error loading spaces:', error);
+        this.errorMessage = 'Impossible de charger les espaces. Veuillez réessayer plus tard.';
+        this.notificationService.showError('Erreur lors du chargement des espaces');
+        return of([]);
+      }),
+      finalize(() => {
+        // Force la mise à jour de l'état de chargement
+        this.isLoading = false;
+        // Force la détection de changements
+        this.changeDetector.detectChanges();
+        console.log('État de chargement mis à jour: isLoading =', this.isLoading);
+      })
+    )
+    .subscribe(spaces => {
+      console.log('Espaces chargés:', spaces);
+      
+      // Afficher un exemple d'espace pour débogage
+      if (spaces.length > 0) {
+        console.log('Premier espace:', JSON.stringify(spaces[0]));
+      }
+      
+      this.spaces = spaces;
+      this.updateTypeFilterCounts(spaces);
+      this.applyFilters();
+      
+      // Explicitement mettre à jour isLoading encore une fois pour être sûr
+      this.isLoading = false;
+      
+      // Force la détection de changements après le chargement
+      setTimeout(() => {
+        this.changeDetector.detectChanges();
+      }, 100);
+    });
+}
+
+  updateTypeFilterCounts(spaces: Space[]): void {
+    // Mise à jour du compteur "Tous"
+    this.typeOptions[0].count = spaces.length;
+    
+    // Mise à jour des compteurs par type
+    for (let i = 1; i < this.typeOptions.length; i++) {
+      const option = this.typeOptions[i];
+      if (option.id === 'suite') {
+        // Cas spécial pour les suites (sous-type de chambre)
+        option.count = spaces.filter(space => 
+          space.type === SpaceType.ROOM && 
+          space.name.toLowerCase().includes('suite')
+        ).length;
+      } else {
+        // Comptage normal pour les autres types
+        option.count = spaces.filter(space => space.type === option.id).length;
+      }
+    }
   }
 
   get totalPages(): number {
@@ -363,8 +389,34 @@ export class SpacesComponent implements OnInit {
   }
 
   get paginatedSpaces(): Space[] {
+    // Si cached, retourner le cached
+    if (this._paginatedSpaces.length > 0) {
+      return this._paginatedSpaces;
+    }
+    
+    this.updatePaginatedSpaces();
+    return this._paginatedSpaces;
+  }
+  
+  updatePaginatedSpaces(): void {
     const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-    return this.filteredSpaces.slice(startIndex, startIndex + this.itemsPerPage);
+    const endIndex = startIndex + this.itemsPerPage;
+    
+    // Vérification des limites pour éviter les erreurs
+    if (startIndex >= this.filteredSpaces.length) {
+      this.currentPage = 1;
+      this._paginatedSpaces = this.filteredSpaces.slice(0, this.itemsPerPage);
+    } else {
+      this._paginatedSpaces = this.filteredSpaces.slice(startIndex, endIndex);
+    }
+    
+    console.log(`Pagination - page: ${this.currentPage}, totalItems: ${this.filteredSpaces.length}, showing: ${startIndex} to ${endIndex - 1}, spaces count: ${this._paginatedSpaces.length}`);
+    
+    // Log des infos sur le premier espace pour débogage
+    if (this._paginatedSpaces.length > 0) {
+      const firstSpace = this._paginatedSpaces[0];
+      console.log(`Premier espace paginé: ${firstSpace.name}, image: ${this.getMainImageUrl(firstSpace)}`);
+    }
   }
 
   toggleMobileFilter(): void {
@@ -372,75 +424,165 @@ export class SpacesComponent implements OnInit {
   }
 
   onFilterChange(filter: SpaceFilter): void {
+    console.log('Nouveau filtre appliqué:', filter);
     this.activeFilter = filter;
     this.applyFilters();
     this.currentPage = 1; // Reset to first page
+    this._paginatedSpaces = []; // Reset cache
     this.showMobileFilter = false; // Close mobile filter
   }
 
   onSortChange(event: Event): void {
     this.sortOption = (event.target as HTMLSelectElement).value;
+    console.log('Nouveau tri appliqué:', this.sortOption);
     this.applyFilters();
+    this._paginatedSpaces = []; // Reset cache
   }
 
   onPageChange(page: number): void {
     this.currentPage = page;
-    window.scrollTo(0, 0); // Scroll to top for better UX
+    this._paginatedSpaces = []; // Reset cache
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top for better UX
   }
 
   onSpaceCardClick(id: string): void {
-    // This would be handled by the router in a real implementation
     console.log(`Navigate to space details: ${id}`);
   }
 
   onSpaceButtonClick(event: { id: string; event: MouseEvent }): void {
-    // Stop propagation already handled in the component
     console.log(`Button clicked for space: ${event.id}`);
   }
 
   resetFilters(): void {
     this.activeFilter = {
-      availableOnly: true,
+      availableOnly: false,
       features: []
     };
     this.applyFilters();
+    this._paginatedSpaces = []; // Reset cache
+    this.notificationService.showInfo('Les filtres ont été réinitialisés');
+  }
+
+  // Helper methods
+  getSpaceTypeName(type: SpaceType): string {
+    switch (type) {
+      case SpaceType.ROOM:
+        return 'Chambre';
+      case SpaceType.RESTAURANT:
+        return 'Restaurant';
+      case SpaceType.BAR:
+        return 'Bar';
+      case SpaceType.EVENT_SPACE:
+        return 'Espace événementiel';
+      default:
+        return 'Espace';
+    }
+  }
+
+  getMainImageUrl(space: Space): string {
+    try {
+      if (space.images && space.images.length > 0) {
+        const primaryImage = space.images.find(img => img.isPrimary);
+        return primaryImage ? primaryImage.url : space.images[0].url;
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération de l\'image:', error);
+    }
+    return 'assets/images/placeholder.jpg';
+  }
+
+  getPriceUnit(space: Space): string {
+    if (!space.price) return '';
+    
+    const currency = space.currency || 'FCFA';
+    
+    switch (space.type) {
+      case SpaceType.ROOM:
+        return `${currency} / nuit`;
+      case SpaceType.EVENT_SPACE:
+        return `${currency} / jour`;
+      default:
+        return currency;
+    }
+  }
+
+  getBadgeForSpace(space: Space): string {
+    if (space.type === SpaceType.ROOM) {
+      if (space.name.toLowerCase().includes('penthouse')) {
+        return 'PENTHOUSE';
+      }
+      if (space.name.toLowerCase().includes('suite')) {
+        return 'SUITE';
+      }
+      if ((space.price || 0) > 500) {
+        return 'LUXE';
+      }
+    }
+    return '';
+  }
+
+  // Corrigé pour éviter les erreurs undefined
+  getFeaturesList(space: Space): { name: string; icon?: string }[] {
+    // Vérifier si space.features existe et est un tableau
+    if (!space.features || !Array.isArray(space.features)) {
+      return [];
+    }
+    
+    return space.features
+      .filter(feature => feature && feature.name && feature.name.trim().length > 0)
+      .slice(0, 3);
   }
 
   private applyFilters(): void {
-    // First, filter the spaces
+    console.log('Application des filtres:', this.activeFilter);
+    // Filtrage initial
     let result = [...this.spaces];
     
+    // Filtre de disponibilité
     if (this.activeFilter.availableOnly) {
       result = result.filter(space => space.available);
     }
     
+    // Filtre par type
     if (this.activeFilter.type) {
-      result = result.filter(space => space.type === this.activeFilter.type);
+      if (this.activeFilter.type === 'suite') {
+        // Cas spécial pour les suites
+        result = result.filter(space => 
+          space.type === SpaceType.ROOM && 
+          space.name.toLowerCase().includes('suite')
+        );
+      } else {
+        result = result.filter(space => space.type === this.activeFilter.type);
+      }
     }
     
+    // Filtre par caractéristiques
     if (this.activeFilter.features && this.activeFilter.features.length > 0) {
       result = result.filter(space => {
+        // Vérifier si space.features existe
+        if (!space.features || !Array.isArray(space.features)) {
+          return false;
+        }
+        
         return this.activeFilter.features!.every(featureId => {
-          return space.features.some(f => f.name.toLowerCase().includes(featureId) || f.icon === featureId);
+          return space.features.some(f => 
+            (f.name && f.name.toLowerCase().includes(featureId.toLowerCase())) || 
+            f.icon === featureId
+          );
         });
       });
     }
     
+    // Filtres de prix
     if (this.activeFilter.minPrice !== undefined) {
       result = result.filter(space => {
-        if (typeof space.price === 'number') {
-          return space.price >= (this.activeFilter.minPrice || 0);
-        }
-        return true; // Keep items without price
+        return (space.price || 0) >= (this.activeFilter.minPrice || 0);
       });
     }
     
     if (this.activeFilter.maxPrice !== undefined) {
       result = result.filter(space => {
-        if (typeof space.price === 'number') {
-          return space.price <= (this.activeFilter.maxPrice || Infinity);
-        }
-        return true; // Keep items without price
+        return (space.price || 0) <= (this.activeFilter.maxPrice || Infinity);
       });
     }
     
@@ -448,6 +590,20 @@ export class SpacesComponent implements OnInit {
     result = this.sortSpaces(result, this.sortOption);
     
     this.filteredSpaces = result;
+    console.log('Espaces filtrés:', this.filteredSpaces.length);
+    
+    // Reset la pagination et le cache
+    this._paginatedSpaces = [];
+    
+    // Reset à la page 1 si aucun espace ne correspond aux critères de la page actuelle
+    if (this.filteredSpaces.length > 0 && this.currentPage > this.totalPages) {
+      this.currentPage = 1;
+    }
+    
+    // Force la détection de changements après le filtrage
+    setTimeout(() => {
+      this.changeDetector.detectChanges();
+    }, 100);
   }
 
   private sortSpaces(spaces: Space[], sortOption: string): Space[] {
@@ -458,25 +614,11 @@ export class SpacesComponent implements OnInit {
         return [...spaces].sort((a, b) => b.name.localeCompare(a.name));
       case 'price-asc':
         return [...spaces].sort((a, b) => {
-          if (typeof a.price === 'number' && typeof b.price === 'number') {
-            return a.price - b.price;
-          } else if (typeof a.price === 'number') {
-            return -1; // Place items with price before those without
-          } else if (typeof b.price === 'number') {
-            return 1; // Place items with price before those without
-          }
-          return 0;
+          return (a.price || 0) - (b.price || 0);
         });
       case 'price-desc':
         return [...spaces].sort((a, b) => {
-          if (typeof a.price === 'number' && typeof b.price === 'number') {
-            return b.price - a.price;
-          } else if (typeof a.price === 'number') {
-            return -1; // Place items with price before those without
-          } else if (typeof b.price === 'number') {
-            return 1; // Place items with price before those without
-          }
-          return 0;
+          return (b.price || 0) - (a.price || 0);
         });
       default:
         return spaces;

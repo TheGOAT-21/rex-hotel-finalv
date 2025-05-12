@@ -1,11 +1,11 @@
 // src/app/public/spaces/space-card/space-card.component.ts
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { SpaceService } from '../../../core/services/space.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { LocalStorageService } from '../../../core/services/local-storage.service';
-import { NotificationService, NotificationType } from '../../../core/services/notification.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { Space, SpaceType } from '../../../core/interfaces/space.interface';
 
 @Component({
@@ -18,12 +18,31 @@ import { Space, SpaceType } from '../../../core/interfaces/space.interface';
       [ngClass]="{'opacity-60': !available}"
       (click)="onCardClick()"
     >
+      <!-- Debug Info (hide in production) -->
+      <div *ngIf="showDebug" class="bg-yellow-100 p-2 text-xs">
+        <div>ID: {{ id }}</div>
+        <div>Name: {{ name }}</div>
+        <div>Type: {{ type }}</div>
+        <div>Image: {{ imageUrl }}</div>
+      </div>
+    
       <!-- Image Container -->
       <div class="relative h-48 md:h-56 overflow-hidden">
+        <!-- Fallback placeholder during image load -->
+        <div *ngIf="!imageLoaded" class="absolute inset-0 flex items-center justify-center bg-gray-200">
+          <div class="animate-pulse text-gray-400">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+        </div>
+        
         <img 
-          [src]="imageUrl" 
+          [src]="safeImageUrl" 
           [alt]="imageAlt || name" 
           class="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+          (load)="onImageLoad()"
+          (error)="onImageError()"
         >
         
         <!-- Badge -->
@@ -122,7 +141,7 @@ import { Space, SpaceType } from '../../../core/interfaces/space.interface';
     </div>
   `
 })
-export class SpaceCardComponent implements OnInit {
+export class SpaceCardComponent implements OnInit, OnChanges {
   @Input() id = '';
   @Input() name = '';
   @Input() type = '';
@@ -140,6 +159,7 @@ export class SpaceCardComponent implements OnInit {
   @Input() detailPath = '';
   @Input() showAvailability = true;
   @Input() showFavoriteButton = true;
+  @Input() showDebug = true; // Afficher les infos de débogage
   
   @Output() cardClick = new EventEmitter<string>();
   @Output() buttonClick = new EventEmitter<{ id: string; event: MouseEvent }>();
@@ -149,6 +169,28 @@ export class SpaceCardComponent implements OnInit {
   isOnPromotion = false;
   promoPercentage = 0;
   spaceDetails?: Space;
+  imageLoaded = false;
+  
+  // Url sécurisée pour l'image
+  get safeImageUrl(): string {
+    // Si l'URL est vide ou undefined, utiliser l'image par défaut
+    if (!this.imageUrl) {
+      return 'assets/images/placeholder.jpg';
+    }
+    
+    // Si l'URL commence par 'assets/', la considérer comme valide
+    if (this.imageUrl.startsWith('assets/')) {
+      return this.imageUrl;
+    }
+    
+    // Si l'URL est relative (pas http/https), ajouter le préfixe 'assets/'
+    if (!this.imageUrl.startsWith('http')) {
+      return `assets/${this.imageUrl}`;
+    }
+    
+    // Sinon, utiliser l'URL telle quelle
+    return this.imageUrl;
+  }
   
   constructor(
     private spaceService: SpaceService,
@@ -165,11 +207,38 @@ export class SpaceCardComponent implements OnInit {
     // Vérifier si l'espace est en promotion
     this.checkPromotion();
     
-    // Récupérer les détails complets de l'espace
-    this.loadSpaceDetails();
+    // Récupérer les détails complets de l'espace si nécessaire
+    if (this.id && (
+      !this.name || 
+      !this.description || 
+      !this.imageUrl || 
+      !this.features || 
+      this.features.length === 0)) {
+      this.loadSpaceDetails();
+    }
     
-    // Vérifier la disponibilité réelle via le service (pour les dates actuelles)
-    this.checkRealAvailability();
+    // Log pour débogage
+    console.log(`SpaceCard Init - ID: ${this.id}, Name: ${this.name}, Image: ${this.imageUrl}`);
+  }
+  
+  ngOnChanges(changes: SimpleChanges): void {
+    // Réinitialiser l'état de chargement de l'image si l'URL change
+    if (changes['imageUrl']) {
+      this.imageLoaded = false;
+    }
+  }
+  
+  onImageLoad(): void {
+    this.imageLoaded = true;
+    console.log(`Image chargée: ${this.safeImageUrl}`);
+  }
+  
+  onImageError(): void {
+    console.error(`Erreur de chargement d'image: ${this.safeImageUrl}`);
+    // Remplacer par l'image par défaut
+    this.imageUrl = 'assets/images/placeholder.jpg';
+    // Réessayer avec la nouvelle URL
+    this.imageLoaded = false;
   }
   
   onCardClick(): void {
@@ -225,6 +294,8 @@ export class SpaceCardComponent implements OnInit {
   }
   
   private checkIfFavorite(): void {
+    if (!this.id) return;
+    
     const favorites = this.localStorageService.get<string[]>('favorite_spaces', []) || [];
     this.isFavorite = favorites.includes(this.id);
   }
@@ -239,7 +310,7 @@ export class SpaceCardComponent implements OnInit {
         parseFloat(this.originalPrice) : this.originalPrice;
       
       const currentPrice = typeof this.price === 'string' ? 
-        parseFloat(this.price) : this.price;
+        parseFloat(this.price as string) : this.price;
       
       if (originalPrice > 0 && currentPrice > 0) {
         this.promoPercentage = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
@@ -248,57 +319,45 @@ export class SpaceCardComponent implements OnInit {
   }
   
   private loadSpaceDetails(): void {
-    if (this.id) {
-      this.spaceService.getSpaceById(this.id).subscribe(
-        space => {
-          if (space) {
-            this.spaceDetails = space;
-            
-            // Mettre à jour les propriétés manquantes si nécessaire
-            if (!this.name && space.name) this.name = space.name;
-            if (!this.type && space.type) this.type = this.formatSpaceType(space.type);
-            if (!this.description && space.description) this.description = space.description;
-            if (!this.price && space.price) this.price = space.price;
-            if (!this.priceUnit && space.currency) this.priceUnit = `${space.currency} / nuit`;
-            if (this.available !== space.available) this.available = space.available;
-            if (!this.features.length && space.features) this.features = space.features;
-            
-            // Mise à jour de l'image principale si elle n'est pas définie
-            if (!this.imageUrl && space.images && space.images.length > 0) {
-              const primaryImage = space.images.find(img => img.isPrimary);
-              this.imageUrl = primaryImage ? primaryImage.url : space.images[0].url;
-              this.imageAlt = primaryImage ? primaryImage.alt : space.name;
+    if (!this.id) return;
+    
+    this.spaceService.getSpaceById(this.id).subscribe(
+      space => {
+        if (space) {
+          this.spaceDetails = space;
+          
+          // Mettre à jour les propriétés manquantes si nécessaire
+          if (!this.name && space.name) this.name = space.name;
+          if (!this.type && space.type) this.type = this.formatSpaceType(space.type);
+          if (!this.description && space.description) this.description = space.description;
+          if (!this.price && space.price) this.price = space.price;
+          if (!this.priceUnit && space.currency) this.priceUnit = `${space.currency} / nuit`;
+          if (this.available !== space.available) this.available = space.available;
+          
+          // Mise à jour des features si nécessaires
+          if (!this.features || this.features.length === 0) {
+            if (space.features && Array.isArray(space.features)) {
+              this.features = space.features.filter(f => f && f.name);
             }
           }
-        },
-        error => {
-          console.error('Erreur lors du chargement des détails de l\'espace:', error);
+          
+          // Mise à jour de l'image principale si elle n'est pas définie
+          if (!this.imageUrl && space.images && space.images.length > 0) {
+            const primaryImage = space.images.find(img => img.isPrimary);
+            this.imageUrl = primaryImage ? primaryImage.url : space.images[0].url;
+            this.imageAlt = primaryImage ? primaryImage.alt : space.name;
+          }
         }
-      );
-    }
-  }
-  
-  private checkRealAvailability(): void {
-    // Si l'espace est marqué comme disponible, vérifier la disponibilité réelle
-    // pour les dates actuelles (aujourd'hui -> demain)
-    if (this.available && this.id) {
-      const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      this.bookingService.checkBookingConflicts(this.id, today, tomorrow).subscribe(
-        hasConflict => {
-          // Mettre à jour la disponibilité en fonction des conflits de réservation
-          this.available = !hasConflict;
-        },
-        error => {
-          console.error('Erreur lors de la vérification de disponibilité:', error);
-        }
-      );
-    }
+      },
+      error => {
+        console.error('Erreur lors du chargement des détails de l\'espace:', error);
+      }
+    );
   }
   
   private saveToViewHistory(): void {
+    if (!this.id) return;
+    
     const viewHistory = this.localStorageService.get<{id: string, timestamp: number}[]>('view_history', []) || [];
     
     // Retirer l'élément s'il existe déjà

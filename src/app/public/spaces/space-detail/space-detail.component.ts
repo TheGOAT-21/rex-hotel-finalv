@@ -238,7 +238,7 @@ import { TabsComponent } from '../../../shared/components/ui/tabs/tabs.component
                           <span class="font-semibold">Capacité max:</span> {{ getMaxCapacity(space) }} pers.
                         </div>
                         <div class="text-text">
-                          <span class="font-semibold">Configurations:</span> {{ space.layouts?.length || 0 }}
+                          <span class="font-semibold">Configurations:</span> {{ space.layouts!.length || 0 }}
                         </div>
                       </ng-container>
                       
@@ -254,7 +254,7 @@ import { TabsComponent } from '../../../shared/components/ui/tabs/tabs.component
                           <span class="font-semibold">Cuisine:</span> {{ space.cuisine || 'Non spécifiée' }}
                         </div>
                         <div class="text-text">
-                          <span class="font-semibold">Menu:</span> {{ space.menuItems?.length || 0 }} plats
+                          <span class="font-semibold">Menu:</span> {{ space.menuItems!.length || 0 }} plats
                         </div>
                       </ng-container>
                     </div>
